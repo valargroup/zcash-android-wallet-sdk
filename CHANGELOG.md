@@ -9,6 +9,7 @@ and this library adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `Synchronizer.fullyScannedHeight` and `Synchronizer.getTreeState` accessors
   for snapshot-height consumers.
+- Added the Rust `zcash_voting` dependency foundation for future shielded voting backend work.
 
 ### Changed
 - `Synchronizer.importAccountByUfvk` now calls `TypesafeBackend.rewindToChainState` after importing
