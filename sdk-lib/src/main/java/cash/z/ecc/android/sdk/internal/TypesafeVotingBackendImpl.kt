@@ -4,6 +4,7 @@ import cash.z.ecc.android.sdk.internal.jni.VotingRustBackend
 import cash.z.ecc.android.sdk.internal.model.voting.FfiBundleSetupResult
 import cash.z.ecc.android.sdk.internal.model.voting.FfiRoundState
 import cash.z.ecc.android.sdk.internal.model.voting.FfiRoundSummary
+import cash.z.ecc.android.sdk.internal.model.voting.FfiVotingHotkey
 import cash.z.ecc.android.sdk.internal.model.voting.VoteRecord
 import org.json.JSONArray
 
@@ -19,6 +20,9 @@ class TypesafeVotingBackendImpl : TypesafeVotingBackend {
 
     override suspend fun computeBundleSetup(notesJson: String): FfiBundleSetupResult =
         rustBackend().computeBundleSetup(notesJson)
+
+    override suspend fun warmProvingCaches() =
+        rustBackend().warmProvingCaches()
 
     private suspend fun rustBackend() = rustBackendLazy.getInstance(Unit)
 }
@@ -84,6 +88,12 @@ private class TypesafeVotingDbImpl(
         notesJson: String
     ): FfiBundleSetupResult =
         votingDb.setupBundles(roundId, notesJson)
+
+    override suspend fun generateHotkey(
+        roundId: String,
+        seed: ByteArray
+    ): FfiVotingHotkey =
+        votingDb.generateHotkey(roundId, seed)
 }
 
 private fun <T> JSONArray.toList(transform: (org.json.JSONObject) -> T): List<T> =

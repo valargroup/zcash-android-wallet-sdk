@@ -43,6 +43,21 @@ pub(super) fn require_len(bytes: Vec<u8>, field: &str, expected: usize) -> anyho
     }
 }
 
+pub(super) fn require_min_len(
+    bytes: Vec<u8>,
+    field: &str,
+    minimum: usize,
+) -> anyhow::Result<Vec<u8>> {
+    if bytes.len() >= minimum {
+        Ok(bytes)
+    } else {
+        Err(anyhow!(
+            "{field} must be at least {minimum} bytes, got {}",
+            bytes.len()
+        ))
+    }
+}
+
 pub(super) fn java_bytes(
     env: &mut JNIEnv<'_>,
     array: &JByteArray<'_>,
@@ -75,6 +90,15 @@ pub(super) fn fixed_bytes<const N: usize>(bytes: Vec<u8>, field: &str) -> anyhow
     bytes
         .try_into()
         .map_err(|_| anyhow!("{field} must be exactly {N} bytes, got {len}"))
+}
+
+pub(super) fn java_bytes_at_least(
+    env: &mut JNIEnv<'_>,
+    array: &JByteArray<'_>,
+    field: &str,
+    minimum: usize,
+) -> anyhow::Result<Vec<u8>> {
+    require_min_len(java_bytes(env, array, field)?, field, minimum)
 }
 
 pub(super) fn make_ffi_round_state<'local>(
@@ -122,6 +146,26 @@ pub(super) fn round_exists(db: &VotingDb, round_id: &str) -> anyhow::Result<bool
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(false),
         Err(e) => Err(anyhow!("round_exists query failed: {}", e)),
     }
+}
+
+pub(super) fn make_ffi_voting_hotkey<'local>(
+    env: &mut JNIEnv<'local>,
+    hotkey: voting::types::VotingHotkey,
+) -> anyhow::Result<jobject> {
+    let class = env.find_class("cash/z/ecc/android/sdk/internal/model/voting/FfiVotingHotkey")?;
+    let sk_obj: JObject<'local> = env.byte_array_from_slice(&hotkey.secret_key)?.into();
+    let pk_obj: JObject<'local> = env.byte_array_from_slice(&hotkey.public_key)?.into();
+    let addr_obj: JObject<'local> = env.new_string(&hotkey.address)?.into();
+    let obj = env.new_object(
+        &class,
+        "([B[BLjava/lang/String;)V",
+        &[
+            JValue::Object(&sk_obj),
+            JValue::Object(&pk_obj),
+            JValue::Object(&addr_obj),
+        ],
+    )?;
+    Ok(obj.into_raw())
 }
 
 pub(super) fn make_ffi_bundle_setup_result<'local>(

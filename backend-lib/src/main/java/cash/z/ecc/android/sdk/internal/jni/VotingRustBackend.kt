@@ -3,6 +3,7 @@ package cash.z.ecc.android.sdk.internal.jni
 import androidx.annotation.Keep
 import cash.z.ecc.android.sdk.internal.model.voting.FfiBundleSetupResult
 import cash.z.ecc.android.sdk.internal.model.voting.FfiRoundState
+import cash.z.ecc.android.sdk.internal.model.voting.FfiVotingHotkey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -23,6 +24,12 @@ class VotingRustBackend private constructor() {
         withContext(Dispatchers.IO) {
             computeBundleSetupNative(notesJson)
                 ?: error("computeBundleSetup returned null")
+        }
+
+    @Throws(RuntimeException::class)
+    suspend fun warmProvingCaches() =
+        withContext(Dispatchers.IO) {
+            warmProvingCachesNative()
         }
 
     suspend fun openVotingDb(dbPath: String, walletId: String): VotingDb =
@@ -115,6 +122,16 @@ class VotingRustBackend private constructor() {
                     ?: error("setupBundles returned null for roundId=$roundId")
             }
 
+        @Throws(RuntimeException::class)
+        suspend fun generateHotkey(
+            roundId: String,
+            seed: ByteArray
+        ): FfiVotingHotkey =
+            withHandle { handle ->
+                generateHotkeyNative(handle, roundId, seed)
+                    ?: error("generateHotkey returned null for roundId=$roundId")
+            }
+
         private suspend fun <T> withHandle(block: (Long) -> T): T =
             accessMutex.withLock {
                 val handle =
@@ -141,6 +158,10 @@ class VotingRustBackend private constructor() {
             shareIndex: Int,
             blind: ByteArray
         ): ByteArray
+
+        @JvmStatic
+        @Throws(RuntimeException::class)
+        private external fun warmProvingCachesNative()
 
         @JvmStatic
         @Throws(RuntimeException::class)
@@ -201,5 +222,13 @@ class VotingRustBackend private constructor() {
             roundId: String,
             notesJson: String
         ): FfiBundleSetupResult?
+
+        @JvmStatic
+        @Throws(RuntimeException::class)
+        private external fun generateHotkeyNative(
+            dbHandle: Long,
+            roundId: String,
+            seed: ByteArray
+        ): FfiVotingHotkey?
     }
 }
