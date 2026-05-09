@@ -1,22 +1,47 @@
 package cash.z.ecc.android.sdk.internal
 
+import cash.z.ecc.android.sdk.ext.fromHex
 import cash.z.ecc.android.sdk.internal.jni.VotingRustBackend
 import cash.z.ecc.android.sdk.internal.model.voting.FfiBundleSetupResult
 import cash.z.ecc.android.sdk.internal.model.voting.FfiRoundState
 import cash.z.ecc.android.sdk.internal.model.voting.FfiRoundSummary
 import cash.z.ecc.android.sdk.internal.model.voting.FfiVotingHotkey
 import org.json.JSONArray
+import org.json.JSONObject
 
 @Suppress("TooManyFunctions", "LongParameterList")
-class TypesafeVotingBackendImpl : TypesafeVotingBackend {
+internal class TypesafeVotingBackendImpl : TypesafeVotingBackend {
+    private val rustBackendLazy =
+        SuspendingLazy<Unit, VotingRustBackend> {
+            VotingRustBackend.new()
+        }
+
+    override suspend fun computeShareNullifier(
+        voteCommitment: ByteArray,
+        shareIndex: Int,
+        blind: ByteArray
+    ): ByteArray =
+        rustBackend().computeShareNullifier(voteCommitment, shareIndex, blind)
+
     override suspend fun openVotingDb(dbPath: String, walletId: String): TypesafeVotingDb =
-        TypesafeVotingDbImpl(VotingRustBackend.new().openVotingDb(dbPath, walletId))
+        TypesafeVotingDbImpl(rustBackend().openVotingDb(dbPath, walletId))
 
     override suspend fun computeBundleSetup(notesJson: String): FfiBundleSetupResult =
-        VotingRustBackend.new().computeBundleSetup(notesJson)
+        rustBackend().computeBundleSetup(notesJson)
 
     override suspend fun warmProvingCaches() =
-        VotingRustBackend.new().warmProvingCaches()
+        rustBackend().warmProvingCaches()
+
+    override suspend fun extractPcztSighash(pcztBytes: ByteArray): ByteArray =
+        rustBackend().extractPcztSighash(pcztBytes)
+
+    override suspend fun extractSpendAuthSig(
+        signedPcztBytes: ByteArray,
+        actionIndex: Int
+    ): ByteArray =
+        rustBackend().extractSpendAuthSig(signedPcztBytes, actionIndex)
+
+    private suspend fun rustBackend() = rustBackendLazy.getInstance(Unit)
 }
 
 @Suppress("TooManyFunctions", "LongParameterList")
@@ -86,14 +111,47 @@ private class TypesafeVotingDbImpl(
         seed: ByteArray
     ): FfiVotingHotkey =
         votingDb.generateHotkey(roundId, seed)
+
+    override suspend fun buildGovernancePczt(
+        roundId: String,
+        bundleIndex: Int,
+        ufvk: String,
+        networkId: Int,
+        accountIndex: Int,
+        notesJson: String,
+        walletSeed: ByteArray,
+        seedFingerprint: ByteArray,
+        roundName: String,
+        addressIndex: Int
+    ): GovernancePcztResult =
+        JSONObject(
+            votingDb.buildGovernancePcztJson(
+                roundId,
+                bundleIndex,
+                ufvk,
+                networkId,
+                accountIndex,
+                notesJson,
+                walletSeed,
+                seedFingerprint,
+                roundName,
+                addressIndex
+            )
+        ).toGovernancePcztResult()
 }
 
 private fun <T> JSONArray.toList(transform: (org.json.JSONObject) -> T): List<T> =
-    (JSON_ARRAY_START_INDEX until length()).map { index ->
+    (0 until length()).map { index ->
         transform(getJSONObject(index))
     }
 
 private fun org.json.JSONObject.getCheckedInt(name: String): Int =
     Math.toIntExact(getLong(name))
 
-private const val JSON_ARRAY_START_INDEX = 0
+private fun JSONObject.toGovernancePcztResult() =
+    GovernancePcztResult(
+        pcztBytes = getString("pczt_bytes").fromHex(),
+        rk = getString("rk").fromHex(),
+        sighash = getString("pczt_sighash").fromHex(),
+        actionIndex = getCheckedInt("action_index")
+    )
