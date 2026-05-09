@@ -1,6 +1,7 @@
 package cash.z.ecc.android.sdk.internal.jni
 
 import androidx.annotation.Keep
+import cash.z.ecc.android.sdk.internal.model.voting.FfiBundleSetupResult
 import cash.z.ecc.android.sdk.internal.model.voting.FfiRoundState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -16,6 +17,13 @@ class VotingRustBackend private constructor() {
         shareIndex: Int,
         blind: ByteArray
     ): ByteArray = computeShareNullifierNative(voteCommitment, shareIndex, blind)
+
+    @Throws(RuntimeException::class)
+    suspend fun computeBundleSetup(notesJson: String): FfiBundleSetupResult =
+        withContext(Dispatchers.IO) {
+            computeBundleSetupNative(notesJson)
+                ?: error("computeBundleSetup returned null")
+        }
 
     suspend fun openVotingDb(dbPath: String, walletId: String): VotingDb =
         withContext(Dispatchers.IO) {
@@ -73,6 +81,16 @@ class VotingRustBackend private constructor() {
             withHandle { handle -> listRoundsJsonNative(handle) }
 
         @Throws(RuntimeException::class)
+        suspend fun getBundleCount(roundId: String): Int =
+            withHandle { handle ->
+                getBundleCountNative(handle, roundId).also { count ->
+                    check(count >= 0) {
+                        "getBundleCount failed for roundId=$roundId"
+                    }
+                }
+            }
+
+        @Throws(RuntimeException::class)
         suspend fun getVotesJson(roundId: String): String =
             withHandle { handle -> getVotesJsonNative(handle, roundId) }
 
@@ -91,6 +109,16 @@ class VotingRustBackend private constructor() {
                         "deleteSkippedBundles failed for roundId=$roundId keepCount=$keepCount"
                     }
                 }
+            }
+
+        @Throws(RuntimeException::class)
+        suspend fun setupBundles(
+            roundId: String,
+            notesJson: String
+        ): FfiBundleSetupResult =
+            withHandle { handle ->
+                setupBundlesNative(handle, roundId, notesJson)
+                    ?: error("setupBundles returned null for roundId=$roundId")
             }
 
         private suspend fun <T> withHandle(block: (Long) -> T): T =
@@ -150,6 +178,10 @@ class VotingRustBackend private constructor() {
 
         @JvmStatic
         @Throws(RuntimeException::class)
+        private external fun getBundleCountNative(dbHandle: Long, roundId: String): Int
+
+        @JvmStatic
+        @Throws(RuntimeException::class)
         private external fun getVotesJsonNative(dbHandle: Long, roundId: String): String
 
         @JvmStatic
@@ -163,5 +195,17 @@ class VotingRustBackend private constructor() {
             roundId: String,
             keepCount: Int
         ): Long
+
+        @JvmStatic
+        @Throws(RuntimeException::class)
+        private external fun computeBundleSetupNative(notesJson: String): FfiBundleSetupResult?
+
+        @JvmStatic
+        @Throws(RuntimeException::class)
+        private external fun setupBundlesNative(
+            dbHandle: Long,
+            roundId: String,
+            notesJson: String
+        ): FfiBundleSetupResult?
     }
 }

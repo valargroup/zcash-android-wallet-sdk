@@ -6698,6 +6698,7 @@ dependencies = [
  "dlopen2",
  "eip681",
  "fs-mistrust",
+ "hex",
  "http",
  "http-body-util",
  "jni",
