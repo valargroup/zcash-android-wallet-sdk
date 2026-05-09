@@ -1,5 +1,6 @@
 package cash.z.ecc.android.sdk.internal
 
+import cash.z.ecc.android.sdk.internal.model.voting.FfiBundleSetupResult
 import cash.z.ecc.android.sdk.internal.model.voting.FfiRoundState
 import cash.z.ecc.android.sdk.internal.model.voting.FfiRoundSummary
 import cash.z.ecc.android.sdk.internal.model.voting.VoteRecord
@@ -7,6 +8,8 @@ import cash.z.ecc.android.sdk.internal.model.voting.VoteRecord
 @Suppress("TooManyFunctions", "LongParameterList")
 interface TypesafeVotingBackend {
     suspend fun openVotingDb(dbPath: String, walletId: String): TypesafeVotingDb
+
+    suspend fun computeBundleSetup(notesJson: String): FfiBundleSetupResult
 }
 
 @Suppress("TooManyFunctions", "LongParameterList")
@@ -26,6 +29,8 @@ interface TypesafeVotingDb {
 
     suspend fun listRounds(): List<FfiRoundSummary>
 
+    suspend fun getBundleCount(roundId: String): Int
+
     suspend fun getVotes(roundId: String): List<VoteRecord>
 
     suspend fun clearRound(roundId: String)
@@ -34,4 +39,9 @@ interface TypesafeVotingDb {
         roundId: String,
         keepCount: Int
     ): Long
+
+    suspend fun setupBundles(
+        roundId: String,
+        notesJson: String
+    ): FfiBundleSetupResult
 }

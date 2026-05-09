@@ -1,6 +1,7 @@
 package cash.z.ecc.android.sdk.internal
 
 import cash.z.ecc.android.sdk.internal.jni.VotingRustBackend
+import cash.z.ecc.android.sdk.internal.model.voting.FfiBundleSetupResult
 import cash.z.ecc.android.sdk.internal.model.voting.FfiRoundState
 import cash.z.ecc.android.sdk.internal.model.voting.FfiRoundSummary
 import cash.z.ecc.android.sdk.internal.model.voting.VoteRecord
@@ -15,6 +16,9 @@ class TypesafeVotingBackendImpl : TypesafeVotingBackend {
 
     override suspend fun openVotingDb(dbPath: String, walletId: String): TypesafeVotingDb =
         TypesafeVotingDbImpl(rustBackend().openVotingDb(dbPath, walletId))
+
+    override suspend fun computeBundleSetup(notesJson: String): FfiBundleSetupResult =
+        rustBackend().computeBundleSetup(notesJson)
 
     private suspend fun rustBackend() = rustBackendLazy.getInstance(Unit)
 }
@@ -54,6 +58,9 @@ private class TypesafeVotingDbImpl(
             )
         }
 
+    override suspend fun getBundleCount(roundId: String): Int =
+        votingDb.getBundleCount(roundId)
+
     override suspend fun getVotes(roundId: String): List<VoteRecord> =
         JSONArray(votingDb.getVotesJson(roundId)).toList { obj ->
             VoteRecord(
@@ -71,6 +78,12 @@ private class TypesafeVotingDbImpl(
         roundId: String,
         keepCount: Int
     ): Long = votingDb.deleteSkippedBundles(roundId, keepCount)
+
+    override suspend fun setupBundles(
+        roundId: String,
+        notesJson: String
+    ): FfiBundleSetupResult =
+        votingDb.setupBundles(roundId, notesJson)
 }
 
 private fun <T> JSONArray.toList(transform: (org.json.JSONObject) -> T): List<T> =
