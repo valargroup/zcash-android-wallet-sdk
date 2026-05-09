@@ -6,6 +6,8 @@ use jni::{
     objects::{JByteArray, JClass, JObject, JString, JValue},
     sys::{jboolean, jbyteArray, jint, jlong, jobject, jstring},
 };
+use orchard::keys::Scope;
+use secrecy::{ExposeSecret, SecretVec};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -14,16 +16,19 @@ use std::{
         atomic::{AtomicI64, Ordering},
     },
 };
+use zcash_client_backend::keys::{UnifiedFullViewingKey, UnifiedSpendingKey};
+use zcash_protocol::consensus::{BranchId, Network, NetworkConstants};
 use zcash_voting as voting;
 
 use voting::storage::{RoundPhase, RoundState, RoundSummary, VoteRecord, VotingDb};
-use voting::types::{NoteInfo, VotingError};
+use voting::types::{GovernancePczt, NoteInfo, VotingError};
 
 use crate::utils::{
     catch_unwind, exception::unwrap_exc_or, java_nullable_string_to_rust, java_string_to_rust,
 };
 
 mod db;
+mod delegation;
 mod helpers;
 mod json;
 mod notes;
