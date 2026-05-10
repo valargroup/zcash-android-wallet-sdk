@@ -1,6 +1,7 @@
 package cash.z.ecc.android.sdk.internal.jni
 
 import androidx.annotation.Keep
+import cash.z.ecc.android.sdk.internal.SdkDispatchers
 import cash.z.ecc.android.sdk.internal.model.voting.FfiBundleSetupResult
 import cash.z.ecc.android.sdk.internal.model.voting.FfiRoundState
 import cash.z.ecc.android.sdk.internal.model.voting.FfiVotingHotkey
@@ -53,7 +54,7 @@ class VotingRustBackend private constructor() {
         }
 
     suspend fun openVotingDb(dbPath: String, walletId: String): VotingDb =
-        withContext(Dispatchers.IO) {
+        withContext(SdkDispatchers.DATABASE_IO) {
             openVotingDbNative(dbPath, walletId).let { dbHandle ->
                 check(dbHandle != 0L) {
                     "openVotingDb failed for dbPath=$dbPath"
@@ -71,7 +72,7 @@ class VotingRustBackend private constructor() {
         suspend fun close() {
             accessMutex.withLock {
                 dbHandle?.let { handle ->
-                    withContext(Dispatchers.IO) {
+                    withContext(SdkDispatchers.DATABASE_IO) {
                         closeVotingDbNative(handle)
                     }
                     dbHandle = null
@@ -193,7 +194,7 @@ class VotingRustBackend private constructor() {
                     checkNotNull(dbHandle) {
                         "Voting DB handle is closed"
                     }
-                withContext(Dispatchers.IO) {
+                withContext(SdkDispatchers.DATABASE_IO) {
                     block(handle)
                 }
             }
