@@ -1,9 +1,5 @@
 use super::*;
 
-// Must match VotingProofProgressCallback.onProgress(Double) in VotingRustBackend.kt.
-const VOTING_PROOF_PROGRESS_CALLBACK_METHOD: &str = "onProgress";
-const VOTING_PROOF_PROGRESS_CALLBACK_SIG: &str = "(D)V";
-
 struct JniProgressReporter {
     vm: JavaVM,
     callback: GlobalRef,
@@ -11,15 +7,12 @@ struct JniProgressReporter {
 
 impl ProofProgressReporter for JniProgressReporter {
     fn on_progress(&self, progress: f64) {
-        // zcash_voting 0.5.9 calls this at coarse milestones outside the spawned
-        // Halo2 proving closure. Attach on each callback so the bridge remains
-        // correct if future progress calls come from another native thread.
         match self.vm.attach_current_thread() {
             Ok(mut env) => {
                 if let Err(e) = env.call_method(
                     self.callback.as_obj(),
-                    VOTING_PROOF_PROGRESS_CALLBACK_METHOD,
-                    VOTING_PROOF_PROGRESS_CALLBACK_SIG,
+                    "onProgress",
+                    "(D)V",
                     &[JValue::Double(progress)],
                 ) {
                     let _ = env.exception_clear();
@@ -40,7 +33,7 @@ pub(super) fn progress_reporter_from_callback(
     } else {
         Ok(Box::new(JniProgressReporter {
             vm: env.get_java_vm()?,
-            callback: env.new_global_ref(callback)?,
+            callback: env.new_global_ref(&callback)?,
         }))
     }
 }

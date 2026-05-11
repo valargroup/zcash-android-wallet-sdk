@@ -3,11 +3,15 @@
 use anyhow::anyhow;
 use jni::{
     JNIEnv, JavaVM,
-    objects::{GlobalRef, JByteArray, JClass, JObject, JObjectArray, JString, JValue},
-    sys::{jboolean, jbyteArray, jint, jlong, jobject, jobjectArray},
+    objects::{GlobalRef, JByteArray, JClass, JObject, JString, JValue},
+    sys::{
+        JNI_FALSE, JNI_TRUE, jboolean, jbyteArray, jint, jlong, jobject, jobjectArray, jstring,
+    },
 };
 use orchard::keys::Scope;
+use rusqlite::named_params;
 use secrecy::{ExposeSecret, SecretVec};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     sync::{
@@ -20,9 +24,11 @@ use zcash_protocol::consensus::{BranchId, Network, NetworkConstants};
 use zcash_voting as voting;
 
 use voting::storage::{RoundPhase, RoundState, RoundSummary, VoteRecord, VotingDb};
+use voting::tree_sync::VoteTreeSync;
 use voting::types::{
     DelegationPirPrecomputeResult, DelegationProofResult, DelegationSubmissionData, GovernancePczt,
-    NoopProgressReporter, NoteInfo, ProofProgressReporter, WitnessData,
+    NoopProgressReporter, NoteInfo, ProofProgressReporter, SharePayload, VoteCommitmentBundle,
+    WireEncryptedShare, WitnessData,
 };
 
 use crate::utils::{
@@ -33,8 +39,12 @@ use crate::utils::{
 mod db;
 mod delegation;
 mod helpers;
+mod json;
 mod notes;
 mod progress;
+mod recovery;
 mod rounds;
 mod share_tracking;
+mod tree;
 mod util;
+mod vote;

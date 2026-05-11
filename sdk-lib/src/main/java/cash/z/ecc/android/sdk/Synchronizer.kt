@@ -687,6 +687,12 @@ interface Synchronizer {
      */
     suspend fun getTreeState(height: BlockHeight): ByteArray
 
+    /**
+     * Returns the absolute path to the wallet's SQLite database file.
+     * Used by the voting backend to read notes at historical heights.
+     */
+    suspend fun getWalletDbPath(): String
+
     //
     // Error Handling
     //

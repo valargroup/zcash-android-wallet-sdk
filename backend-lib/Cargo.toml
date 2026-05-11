@@ -10,11 +10,6 @@ publish = false
 edition = "2024"
 rust-version = "1.92"
 
-[features]
-# Enables JNI helpers that are only used by Android instrumentation tests.
-# This feature must not be enabled for production native builds.
-android-test-fixtures = []
-
 [dependencies]
 # Zcash dependencies
 orchard = { version = "=0.13.1", features = ["unstable-voting-circuits"] }
@@ -38,6 +33,7 @@ zcash_protocol = "0.8"
 zcash_script = "0.4"
 zip32 = "0.2"
 eip681 = "0.1.0"
+incrementalmerkletree = { version = "0.8", default-features = false }
 
 # Infrastructure
 prost = "0.14"
@@ -60,6 +56,9 @@ jni = { version = "0.21", default-features = false }
 uuid = "1"
 bitflags = "2"
 blake2b_simd = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Explicit dependency for JNI-layer voting JSON encoding/decoding of binary fields.
 hex = "0.4"
 
 # lightwalletd
@@ -98,11 +97,12 @@ rust-analyzer = "0.0.1"
 # The transitive `voting-circuits` dependency contains the share-reveal circuit
 # and the Poseidon-based `share_nullifier_hash` implementation:
 # https://github.com/valargroup/voting-circuits/blob/v0.4.1/voting-circuits/src/share_reveal/circuit.rs
-# Default features stay disabled. The `client-pir` feature is needed for
-# delegation proof precompute and proof generation; tree-sync remains later.
-# Expected PIR/networking transitives include `pir-client`, `pir-types`,
-# `valar-ypir`, `valar-spiral-rs`, and `hyper-rustls`.
-zcash_voting = { version = "0.5.9", default-features = false, features = ["client-pir"] }
+# Default features stay disabled; the integration branch opts into the client
+# PIR and tree-sync stacks needed by the Android voting orchestration APIs.
+zcash_voting = { version = "0.5.9", default-features = false, features = [
+    "client-pir",
+    "client-tree-sync",
+] }
 
 ## Uncomment this to test librustzcash changes locally
 #[patch.crates-io]
