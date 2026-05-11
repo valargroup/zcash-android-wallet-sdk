@@ -349,20 +349,6 @@ pub(super) fn bundled_notes_for_index(
         .ok_or_else(|| anyhow!("bundle_index {bundle_index} is not present in note bundle set"))
 }
 
-pub(super) fn round_exists(db: &VotingDb, round_id: &str) -> anyhow::Result<bool> {
-    let conn = db.conn();
-    let wallet_id = db.wallet_id();
-    match conn.query_row(
-        "SELECT 1 FROM rounds WHERE round_id = ?1 AND wallet_id = ?2 LIMIT 1",
-        rusqlite::params![round_id, wallet_id],
-        |_| Ok(()),
-    ) {
-        Ok(()) => Ok(true),
-        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(false),
-        Err(e) => Err(anyhow!("round_exists query failed: {}", e)),
-    }
-}
-
 /// Advances a round phase without allowing regressions; equal phases are
 /// treated as idempotent.
 pub(super) fn update_round_phase_forward(
