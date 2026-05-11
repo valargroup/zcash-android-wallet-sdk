@@ -247,6 +247,7 @@ pub(super) fn round_exists(db: &VotingDb, round_id: &str) -> anyhow::Result<bool
     }
 }
 
+/// Builds the Kotlin hotkey FFI model after enforcing the expected key widths.
 pub(super) fn make_ffi_voting_hotkey<'local>(
     env: &mut JNIEnv<'local>,
     hotkey: voting::types::VotingHotkey,
@@ -279,6 +280,7 @@ pub(super) fn make_ffi_voting_hotkey<'local>(
     Ok(obj.into_raw())
 }
 
+/// Builds the Kotlin bundle setup FFI model with width-checked Java primitives.
 pub(super) fn make_ffi_bundle_setup_result<'local>(
     env: &mut JNIEnv<'local>,
     count: u32,
@@ -308,6 +310,8 @@ pub(super) fn make_ffi_bundle_setup_result<'local>(
     Ok(obj.into_raw())
 }
 
+/// Runs the voting note chunker and returns total count, total eligible weight,
+/// and each bundle's quantized voting weight.
 pub(super) fn bundle_setup_from_notes(notes: &[NoteInfo]) -> anyhow::Result<(u32, u64, Vec<u64>)> {
     let chunk_result = voting::types::chunk_notes(notes);
     let bundle_weights = chunk_result
@@ -334,6 +338,7 @@ fn update_hash_with_len_prefixed_bytes(state: &mut blake2b_simd::State, value: &
     state.update(value);
 }
 
+/// Hashes every note field needed to reject same-position bundle substitutions.
 fn note_identity_hash(note: &NoteInfo) -> [u8; NOTE_IDENTITY_HASH_BYTES] {
     let mut state = blake2b_simd::Params::new()
         .hash_length(NOTE_IDENTITY_HASH_BYTES)
@@ -355,6 +360,8 @@ fn note_identity_hash(note: &NoteInfo) -> [u8; NOTE_IDENTITY_HASH_BYTES] {
     out
 }
 
+/// Creates Android-owned sidecar tables that bind stored bundle positions to
+/// full note identities.
 pub(super) fn init_voting_android_tables(db: &VotingDb) -> anyhow::Result<()> {
     let conn = db.conn();
     conn.execute_batch(
@@ -373,6 +380,8 @@ pub(super) fn init_voting_android_tables(db: &VotingDb) -> anyhow::Result<()> {
     .map_err(|e| anyhow!("failed to initialize Android voting tables: {e}"))
 }
 
+/// Inserts zcash_voting bundle rows and Android note-identity rows in one
+/// SQLite transaction.
 pub(super) fn setup_bundles_with_note_identities(
     db: &VotingDb,
     round_id: &str,
@@ -455,6 +464,7 @@ fn store_bundle_note_identities(
     Ok(())
 }
 
+/// Recomputes deterministic note chunking and returns the requested bundle.
 pub(super) fn bundled_notes_for_index(
     notes: &[NoteInfo],
     bundle_index: u32,
@@ -470,6 +480,8 @@ pub(super) fn bundled_notes_for_index(
         .ok_or_else(|| anyhow!("bundle_index {bundle_index} is not present in note bundle set"))
 }
 
+/// Verifies that PCZT construction is using exactly the notes persisted during
+/// setupBundles.
 pub(super) fn require_persisted_bundle_notes(
     db: &VotingDb,
     round_id: &str,
@@ -569,6 +581,8 @@ pub(super) fn round_exists(db: &VotingDb, round_id: &str) -> anyhow::Result<bool
     }
 }
 
+/// Advances a round phase without allowing regressions; equal phases are
+/// treated as idempotent.
 pub(super) fn update_round_phase_forward(
     db: &VotingDb,
     round_id: &str,
@@ -596,6 +610,8 @@ pub(super) fn update_round_phase_forward(
         .map_err(|e| anyhow!("update_round_phase: {}", e))
 }
 
+/// Requires the hotkey step before PCZT construction and rejects calls after
+/// later workflow phases have already begun.
 pub(super) fn require_round_phase_for_delegation_construction(
     db: &VotingDb,
     round_id: &str,
