@@ -19,6 +19,8 @@ and this library adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an account. This enables imported accounts to discover their history and funds, at the cost of
   other accounts being temporarily blocked by a short resync (specifically rescanning the incomplete
   shard at the tip).
+- `String.fromHex` now rejects odd-length and non-hex input instead of silently coercing malformed
+  strings.
 
 ## [2.4.8] - 2025-04-02
 
