@@ -7,7 +7,7 @@ import cash.z.ecc.android.sdk.internal.model.voting.JniVoteRecord
 import cash.z.ecc.android.sdk.internal.model.voting.JniVotingHotkey
 
 @Suppress("TooManyFunctions", "LongParameterList")
-internal interface TypesafeVotingBackend {
+interface TypesafeVotingBackend {
     suspend fun openVotingDb(dbPath: String, walletId: String): TypesafeVotingDb
 
     suspend fun computeShareNullifier(
@@ -82,7 +82,7 @@ internal interface TypesafeVotingBackend {
 }
 
 @Suppress("TooManyFunctions", "LongParameterList")
-internal interface TypesafeVotingDb {
+interface TypesafeVotingDb {
     suspend fun close()
 
     suspend fun initRound(
@@ -284,7 +284,7 @@ internal interface TypesafeVotingDb {
     suspend fun encryptShares(roundId: String, shares: List<Long>): List<WireEncryptedShare>
 }
 
-internal data class GovernancePcztResult(
+data class GovernancePcztResult(
     val pcztBytes: ByteArray,
     val rk: ByteArray,
     val sighash: ByteArray,
@@ -308,7 +308,7 @@ internal data class GovernancePcztResult(
     }
 }
 
-internal data class DelegationProofResult(
+data class DelegationProofResult(
     val proof: ByteArray,
     val publicInputs: List<ByteArray>,
     val nfSigned: ByteArray,
@@ -326,12 +326,12 @@ internal data class DelegationProofResult(
     override fun hashCode(): Int = proof.contentHashCode()
 }
 
-internal data class DelegationPirPrecomputeResult(
+data class DelegationPirPrecomputeResult(
     val cachedCount: Long,
     val fetchedCount: Long
 )
 
-internal data class VoteCommitmentResult(
+data class VoteCommitmentResult(
     val vanNullifier: ByteArray,
     val voteAuthorityNoteNew: ByteArray,
     val voteCommitment: ByteArray,
@@ -350,7 +350,7 @@ internal data class VoteCommitmentResult(
     override fun hashCode(): Int = voteCommitment.contentHashCode()
 }
 
-internal data class WireEncryptedShare(
+data class WireEncryptedShare(
     val c1: ByteArray,
     val c2: ByteArray,
     val shareIndex: Int
@@ -371,7 +371,7 @@ internal data class WireEncryptedShare(
     }
 }
 
-internal data class DelegationInputsResult(
+data class DelegationInputsResult(
     val fvkBytes: ByteArray,
     val gDNewX: ByteArray,
     val pkDNewX: ByteArray,
@@ -404,7 +404,7 @@ internal data class DelegationInputsResult(
     }
 }
 
-internal data class DelegationSubmissionResult(
+data class DelegationSubmissionResult(
     val proof: ByteArray,
     val rk: ByteArray,
     val spendAuthSig: ByteArray,
@@ -425,7 +425,7 @@ internal data class DelegationSubmissionResult(
     override fun hashCode(): Int = sighash.contentHashCode()
 }
 
-internal data class KeystoneSignatureRecord(
+data class KeystoneSignatureRecord(
     val bundleIndex: Int,
     val sig: ByteArray,
     val sighash: ByteArray,
@@ -449,19 +449,19 @@ internal data class KeystoneSignatureRecord(
     }
 }
 
-internal data class CommitmentBundleRecord(
+data class CommitmentBundleRecord(
     val bundleJson: String,
     val vcTreePosition: Long
 )
 
-internal data class VoteRecord(
+data class VoteRecord(
     val proposalId: Int,
     val bundleIndex: Int,
     val choice: Int,
     val submitted: Boolean
 )
 
-internal sealed interface VotingTxHashLookup {
+sealed interface VotingTxHashLookup {
     data object NotFound : VotingTxHashLookup
 
     data class Present(
@@ -469,7 +469,7 @@ internal sealed interface VotingTxHashLookup {
     ) : VotingTxHashLookup
 }
 
-internal data class ShareDelegationRecord(
+data class ShareDelegationRecord(
     val roundId: String,
     val bundleIndex: Int,
     val proposalId: Int,

@@ -107,7 +107,7 @@ tasks.dokkaHtml.configure {
 dependencies {
     api(libs.kotlinx.datetime)
     api(projects.lightwalletClientLib)
-    implementation(projects.backendLib)
+    api(projects.backendLib)
 
     implementation(libs.androidx.annotation)
     implementation(libs.androidx.core)

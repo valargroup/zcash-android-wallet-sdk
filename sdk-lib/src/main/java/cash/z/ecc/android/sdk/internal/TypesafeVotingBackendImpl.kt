@@ -10,12 +10,13 @@ import cash.z.ecc.android.sdk.internal.model.voting.JniRoundState
 import cash.z.ecc.android.sdk.internal.model.voting.JniRoundSummary
 import cash.z.ecc.android.sdk.internal.model.voting.JniVoteRecord
 import cash.z.ecc.android.sdk.internal.model.voting.JniVotingHotkey
+import org.json.JSONArray
 import org.json.JSONObject
 
 private const val PCZT_HASH_BYTES = 32
 
 @Suppress("TooManyFunctions", "LongParameterList")
-internal class TypesafeVotingBackendImpl : TypesafeVotingBackend {
+class TypesafeVotingBackendImpl : TypesafeVotingBackend {
     private val rustBackendLazy =
         SuspendingLazy<Unit, VotingRustBackend> {
             VotingRustBackend.new()
