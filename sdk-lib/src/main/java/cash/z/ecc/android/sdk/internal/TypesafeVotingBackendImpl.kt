@@ -60,45 +60,42 @@ internal class TypesafeVotingBackendImpl : TypesafeVotingBackend {
         numOptions: Int,
         vcTreePosition: Long,
         singleShareMode: Boolean
-    ): List<JniSharePayload> =
-        rustBackend()
+    ): List<JniSharePayload> {
+        commitment.requireValid()
+        return rustBackend()
             .buildSharePayloads(
                 commitment,
                 voteDecision,
                 numOptions,
                 vcTreePosition,
                 singleShareMode
-            ).onEach { payload ->
+            ).also { payloads ->
+                val expectedCount = if (singleShareMode) 1 else JNI_VOTE_SHARE_COUNT
+                require(payloads.size == expectedCount) {
+                    "sharePayloads must contain $expectedCount entries, got ${payloads.size}"
+                }
+            }.onEach { payload ->
                 payload.requireValid()
             }.asList()
+    }
 
     override suspend fun signCastVote(
         hotkeySeed: ByteArray,
         networkId: Int,
-        roundId: String,
-        rVpk: ByteArray,
-        vanNullifier: ByteArray,
-        vanNew: ByteArray,
-        voteCommitment: ByteArray,
-        proposalId: Int,
-        anchorHeight: Long,
-        alphaV: ByteArray
-    ): ByteArray =
-        rustBackend()
+        accountIndex: Int,
+        commitment: JniVoteCommitmentResult
+    ): ByteArray {
+        commitment.requireValid()
+        return rustBackend()
             .signCastVote(
                 hotkeySeed,
                 networkId,
-                roundId,
-                rVpk,
-                vanNullifier,
-                vanNew,
-                voteCommitment,
-                proposalId,
-                anchorHeight,
-                alphaV
+                accountIndex,
+                commitment
             ).also { sig ->
                 sig.requireByteArraySize("voteAuthSig", JNI_SPEND_AUTH_SIG_BYTES_SIZE)
             }
+    }
 
     override suspend fun extractOrchardFvkFromUfvk(ufvk: String, networkId: Int): ByteArray =
         rustBackend().extractOrchardFvkFromUfvk(ufvk, networkId)
@@ -257,6 +254,7 @@ internal interface VotingDbBackend {
         numOptions: Int,
         witness: JniVanWitness,
         networkId: Int,
+        accountIndex: Int,
         singleShare: Boolean,
         proofProgress: VotingProofProgressCallback?
     ): JniVoteCommitmentResult
@@ -455,6 +453,7 @@ private class RustVotingDbBackend(
         numOptions: Int,
         witness: JniVanWitness,
         networkId: Int,
+        accountIndex: Int,
         singleShare: Boolean,
         proofProgress: VotingProofProgressCallback?
     ): JniVoteCommitmentResult =
@@ -467,6 +466,7 @@ private class RustVotingDbBackend(
             numOptions,
             witness,
             networkId,
+            accountIndex,
             singleShare,
             proofProgress
         )
@@ -656,6 +656,9 @@ internal class TypesafeVotingDbImpl(
     override suspend fun resetTreeClient(roundId: String) =
         votingDb.resetTreeClient(roundId)
 
+    override suspend fun resetAllTreeClients() =
+        votingDb.resetTreeClient("")
+
     override suspend fun storeVanPosition(roundId: String, bundleIndex: Int, position: Long) =
         votingDb.storeVanPosition(roundId, bundleIndex, position)
 
@@ -677,6 +680,7 @@ internal class TypesafeVotingDbImpl(
         numOptions: Int,
         witness: JniVanWitness,
         networkId: Int,
+        accountIndex: Int,
         singleShare: Boolean,
         proofProgress: ((Double) -> Unit)?
     ): JniVoteCommitmentResult =
@@ -690,6 +694,7 @@ internal class TypesafeVotingDbImpl(
                 numOptions,
                 witness,
                 networkId,
+                accountIndex,
                 singleShare,
                 proofProgress?.asVotingProgressCallback()
             ).also { commitment ->

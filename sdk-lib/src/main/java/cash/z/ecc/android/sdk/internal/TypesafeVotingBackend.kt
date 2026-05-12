@@ -38,14 +38,8 @@ internal interface TypesafeVotingBackend {
     suspend fun signCastVote(
         hotkeySeed: ByteArray,
         networkId: Int,
-        roundId: String,
-        rVpk: ByteArray,
-        vanNullifier: ByteArray,
-        vanNew: ByteArray,
-        voteCommitment: ByteArray,
-        proposalId: Int,
-        anchorHeight: Long,
-        alphaV: ByteArray
+        accountIndex: Int,
+        commitment: JniVoteCommitmentResult
     ): ByteArray
 
     suspend fun extractOrchardFvkFromUfvk(ufvk: String, networkId: Int): ByteArray
@@ -174,7 +168,9 @@ internal interface TypesafeVotingDb {
 
     suspend fun syncVoteTree(roundId: String, nodeUrl: String): Long
 
-    suspend fun resetTreeClient(roundId: String = "")
+    suspend fun resetTreeClient(roundId: String)
+
+    suspend fun resetAllTreeClients()
 
     suspend fun storeVanPosition(roundId: String, bundleIndex: Int, position: Long)
 
@@ -193,6 +189,7 @@ internal interface TypesafeVotingDb {
         numOptions: Int,
         witness: JniVanWitness,
         networkId: Int,
+        accountIndex: Int,
         singleShare: Boolean = false,
         proofProgress: ((Double) -> Unit)? = null
     ): JniVoteCommitmentResult
