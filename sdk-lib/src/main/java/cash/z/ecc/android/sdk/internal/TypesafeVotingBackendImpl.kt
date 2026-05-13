@@ -333,7 +333,9 @@ private class TypesafeVotingDbImpl(
         roundId: String,
         bundleIndex: Int
     ): VotingTxHashLookup =
-        votingDb.getDelegationTxHash(roundId, bundleIndex).toTxHashLookup()
+        runExpectedMissingRowLookup {
+            votingDb.getDelegationTxHash(roundId, bundleIndex).toTxHashLookup()
+        } ?: VotingTxHashLookup.NotFound
 
     override suspend fun storeVoteTxHash(
         roundId: String,
@@ -350,7 +352,9 @@ private class TypesafeVotingDbImpl(
         bundleIndex: Int,
         proposalId: Int
     ): VotingTxHashLookup =
-        votingDb.getVoteTxHash(roundId, bundleIndex, proposalId).toTxHashLookup()
+        runExpectedMissingRowLookup {
+            votingDb.getVoteTxHash(roundId, bundleIndex, proposalId).toTxHashLookup()
+        } ?: VotingTxHashLookup.NotFound
 
     override suspend fun storeCommitmentBundle(
         roundId: String,
@@ -371,9 +375,11 @@ private class TypesafeVotingDbImpl(
         bundleIndex: Int,
         proposalId: Int
     ): CommitmentBundleRecord? =
-        votingDb
-            .getCommitmentBundleJson(roundId, bundleIndex, proposalId)
-            ?.let { JSONObject(it).toCommitmentBundleRecord() }
+        runExpectedMissingRowLookup {
+            votingDb
+                .getCommitmentBundleJson(roundId, bundleIndex, proposalId)
+                ?.let { JSONObject(it).toCommitmentBundleRecord() }
+        }
 
     override suspend fun clearRecoveryState(roundId: String) =
         votingDb.clearRecoveryState(roundId)
@@ -598,6 +604,26 @@ private fun JSONArray.toHexList(): List<ByteArray> =
 
 private fun ((Double) -> Unit).asVotingProgressCallback() =
     VotingProofProgressCallback { progress -> invoke(progress) }
+
+private suspend fun <T> runExpectedMissingRowLookup(block: suspend () -> T): T? =
+    try {
+        block()
+    } catch (exception: RuntimeException) {
+        // Recovery lookups are cache probes. Defense-in-depth
+        // to avoid having no rows be propagated as exceptions.
+        if (exception.isQueryReturnedNoRows()) {
+            null
+        } else {
+            throw exception
+        }
+    }
+
+private fun Throwable.isQueryReturnedNoRows(): Boolean =
+    generateSequence(this) { throwable -> throwable.cause }
+        .any { throwable ->
+            throwable.message
+                ?.contains("Query returned no rows", ignoreCase = true) == true
+        }
 
 private fun String?.toTxHashLookup(): VotingTxHashLookup =
     if (this == null) {
