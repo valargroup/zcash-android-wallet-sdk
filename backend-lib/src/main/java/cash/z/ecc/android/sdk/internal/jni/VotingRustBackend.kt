@@ -4,6 +4,7 @@ import androidx.annotation.Keep
 import androidx.annotation.VisibleForTesting
 import cash.z.ecc.android.sdk.internal.SdkDispatchers
 import cash.z.ecc.android.sdk.internal.model.voting.JniBundleSetupResult
+import cash.z.ecc.android.sdk.internal.model.voting.JniCommitmentBundleRecord
 import cash.z.ecc.android.sdk.internal.model.voting.JniDelegationPirPrecomputeResult
 import cash.z.ecc.android.sdk.internal.model.voting.JniDelegationProofResult
 import cash.z.ecc.android.sdk.internal.model.voting.JniDelegationSubmissionResult
@@ -11,6 +12,7 @@ import cash.z.ecc.android.sdk.internal.model.voting.JniGovernancePczt
 import cash.z.ecc.android.sdk.internal.model.voting.JniNoteInfo
 import cash.z.ecc.android.sdk.internal.model.voting.JniRoundState
 import cash.z.ecc.android.sdk.internal.model.voting.JniRoundSummary
+import cash.z.ecc.android.sdk.internal.model.voting.JniShareDelegationRecord
 import cash.z.ecc.android.sdk.internal.model.voting.JniSharePayload
 import cash.z.ecc.android.sdk.internal.model.voting.JniVanWitness
 import cash.z.ecc.android.sdk.internal.model.voting.JniVoteCommitmentResult
@@ -525,6 +527,176 @@ class VotingRustBackend private constructor() {
                 ) ?: error("buildVoteCommitment returned null")
             }
 
+        @Throws(RuntimeException::class)
+        suspend fun storeDelegationTxHash(
+            roundId: String,
+            bundleIndex: Int,
+            txHash: String
+        ) = withHandle { handle ->
+            check(storeDelegationTxHashNative(handle, roundId, bundleIndex, txHash)) {
+                "storeDelegationTxHash failed for roundId=$roundId bundleIndex=$bundleIndex"
+            }
+        }
+
+        @Throws(RuntimeException::class)
+        suspend fun getDelegationTxHash(
+            roundId: String,
+            bundleIndex: Int
+        ): String? =
+            withHandle { handle ->
+                getDelegationTxHashNative(handle, roundId, bundleIndex)
+            }
+
+        @Throws(RuntimeException::class)
+        suspend fun storeVoteTxHash(
+            roundId: String,
+            bundleIndex: Int,
+            proposalId: Int,
+            txHash: String
+        ) = withHandle { handle ->
+            check(storeVoteTxHashNative(handle, roundId, bundleIndex, proposalId, txHash)) {
+                "storeVoteTxHash failed for roundId=$roundId bundleIndex=$bundleIndex proposalId=$proposalId"
+            }
+        }
+
+        @Throws(RuntimeException::class)
+        suspend fun markVoteSubmitted(
+            roundId: String,
+            bundleIndex: Int,
+            proposalId: Int
+        ) = withHandle { handle ->
+            check(markVoteSubmittedNative(handle, roundId, bundleIndex, proposalId)) {
+                "markVoteSubmitted failed for roundId=$roundId bundleIndex=$bundleIndex proposalId=$proposalId"
+            }
+        }
+
+        @Throws(RuntimeException::class)
+        suspend fun getVoteTxHash(
+            roundId: String,
+            bundleIndex: Int,
+            proposalId: Int
+        ): String? =
+            withHandle { handle ->
+                getVoteTxHashNative(handle, roundId, bundleIndex, proposalId)
+            }
+
+        @Throws(RuntimeException::class)
+        suspend fun storeCommitmentBundle(
+            roundId: String,
+            bundleIndex: Int,
+            proposalId: Int,
+            commitment: JniVoteCommitmentResult,
+            vcTreePosition: Long
+        ) = withHandle { handle ->
+            check(
+                storeCommitmentBundleNative(
+                    handle,
+                    roundId,
+                    bundleIndex,
+                    proposalId,
+                    commitment,
+                    vcTreePosition
+                )
+            ) {
+                "storeCommitmentBundle failed for roundId=$roundId bundleIndex=$bundleIndex proposalId=$proposalId"
+            }
+        }
+
+        @Throws(RuntimeException::class)
+        suspend fun getCommitmentBundle(
+            roundId: String,
+            bundleIndex: Int,
+            proposalId: Int
+        ): JniCommitmentBundleRecord? =
+            withHandle { handle ->
+                getCommitmentBundleNative(handle, roundId, bundleIndex, proposalId)
+            }
+
+        @Throws(RuntimeException::class)
+        suspend fun clearRecoveryState(roundId: String) =
+            withHandle { handle ->
+                check(clearRecoveryStateNative(handle, roundId)) {
+                    "clearRecoveryState failed for roundId=$roundId"
+                }
+            }
+
+        @Throws(RuntimeException::class)
+        suspend fun recordShareDelegation(
+            roundId: String,
+            bundleIndex: Int,
+            proposalId: Int,
+            shareIndex: Int,
+            sentToUrls: List<String>,
+            nullifier: ByteArray,
+            submitAt: Long
+        ) = withHandle { handle ->
+            check(
+                recordShareDelegationNative(
+                    handle,
+                    roundId,
+                    bundleIndex,
+                    proposalId,
+                    shareIndex,
+                    sentToUrls.toTypedArray(),
+                    nullifier,
+                    submitAt
+                )
+            ) {
+                "recordShareDelegation failed for roundId=$roundId " +
+                    "bundleIndex=$bundleIndex proposalId=$proposalId shareIndex=$shareIndex"
+            }
+        }
+
+        @Throws(RuntimeException::class)
+        suspend fun getShareDelegations(roundId: String): Array<JniShareDelegationRecord> =
+            withHandle { handle ->
+                getShareDelegationsNative(handle, roundId)
+                    ?: error("getShareDelegations returned null")
+            }
+
+        @Throws(RuntimeException::class)
+        suspend fun getUnconfirmedDelegations(roundId: String): Array<JniShareDelegationRecord> =
+            withHandle { handle ->
+                getUnconfirmedDelegationsNative(handle, roundId)
+                    ?: error("getUnconfirmedDelegations returned null")
+            }
+
+        @Throws(RuntimeException::class)
+        suspend fun markShareConfirmed(
+            roundId: String,
+            bundleIndex: Int,
+            proposalId: Int,
+            shareIndex: Int
+        ) = withHandle { handle ->
+            check(markShareConfirmedNative(handle, roundId, bundleIndex, proposalId, shareIndex)) {
+                "markShareConfirmed failed for roundId=$roundId " +
+                    "bundleIndex=$bundleIndex proposalId=$proposalId shareIndex=$shareIndex"
+            }
+        }
+
+        @Throws(RuntimeException::class)
+        suspend fun addSentServers(
+            roundId: String,
+            bundleIndex: Int,
+            proposalId: Int,
+            shareIndex: Int,
+            newUrls: List<String>
+        ) = withHandle { handle ->
+            check(
+                addSentServersNative(
+                    handle,
+                    roundId,
+                    bundleIndex,
+                    proposalId,
+                    shareIndex,
+                    newUrls.toTypedArray()
+                )
+            ) {
+                "addSentServers failed for roundId=$roundId " +
+                    "bundleIndex=$bundleIndex proposalId=$proposalId shareIndex=$shareIndex"
+            }
+        }
+
         @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
         internal suspend fun storeDelegationProofFixtureForTesting(
             roundId: String,
@@ -871,6 +1043,123 @@ class VotingRustBackend private constructor() {
             singleShare: Boolean,
             proofProgress: VotingProofProgressCallback?
         ): JniVoteCommitmentResult?
+
+        @JvmStatic
+        @Throws(RuntimeException::class)
+        private external fun storeDelegationTxHashNative(
+            dbHandle: Long,
+            roundId: String,
+            bundleIndex: Int,
+            txHash: String
+        ): Boolean
+
+        @JvmStatic
+        @Throws(RuntimeException::class)
+        private external fun getDelegationTxHashNative(
+            dbHandle: Long,
+            roundId: String,
+            bundleIndex: Int
+        ): String?
+
+        @JvmStatic
+        @Throws(RuntimeException::class)
+        private external fun storeVoteTxHashNative(
+            dbHandle: Long,
+            roundId: String,
+            bundleIndex: Int,
+            proposalId: Int,
+            txHash: String
+        ): Boolean
+
+        @JvmStatic
+        @Throws(RuntimeException::class)
+        private external fun markVoteSubmittedNative(
+            dbHandle: Long,
+            roundId: String,
+            bundleIndex: Int,
+            proposalId: Int
+        ): Boolean
+
+        @JvmStatic
+        @Throws(RuntimeException::class)
+        private external fun getVoteTxHashNative(
+            dbHandle: Long,
+            roundId: String,
+            bundleIndex: Int,
+            proposalId: Int
+        ): String?
+
+        @JvmStatic
+        @Throws(RuntimeException::class)
+        private external fun storeCommitmentBundleNative(
+            dbHandle: Long,
+            roundId: String,
+            bundleIndex: Int,
+            proposalId: Int,
+            commitment: JniVoteCommitmentResult,
+            vcTreePosition: Long
+        ): Boolean
+
+        @JvmStatic
+        @Throws(RuntimeException::class)
+        private external fun getCommitmentBundleNative(
+            dbHandle: Long,
+            roundId: String,
+            bundleIndex: Int,
+            proposalId: Int
+        ): JniCommitmentBundleRecord?
+
+        @JvmStatic
+        @Throws(RuntimeException::class)
+        private external fun clearRecoveryStateNative(dbHandle: Long, roundId: String): Boolean
+
+        @JvmStatic
+        @Throws(RuntimeException::class)
+        private external fun recordShareDelegationNative(
+            dbHandle: Long,
+            roundId: String,
+            bundleIndex: Int,
+            proposalId: Int,
+            shareIndex: Int,
+            sentToUrls: Array<String>,
+            nullifier: ByteArray,
+            submitAt: Long
+        ): Boolean
+
+        @JvmStatic
+        @Throws(RuntimeException::class)
+        private external fun getShareDelegationsNative(
+            dbHandle: Long,
+            roundId: String
+        ): Array<JniShareDelegationRecord>?
+
+        @JvmStatic
+        @Throws(RuntimeException::class)
+        private external fun getUnconfirmedDelegationsNative(
+            dbHandle: Long,
+            roundId: String
+        ): Array<JniShareDelegationRecord>?
+
+        @JvmStatic
+        @Throws(RuntimeException::class)
+        private external fun markShareConfirmedNative(
+            dbHandle: Long,
+            roundId: String,
+            bundleIndex: Int,
+            proposalId: Int,
+            shareIndex: Int
+        ): Boolean
+
+        @JvmStatic
+        @Throws(RuntimeException::class)
+        private external fun addSentServersNative(
+            dbHandle: Long,
+            roundId: String,
+            bundleIndex: Int,
+            proposalId: Int,
+            shareIndex: Int,
+            newUrls: Array<String>
+        ): Boolean
 
         @JvmStatic
         @Throws(RuntimeException::class)
