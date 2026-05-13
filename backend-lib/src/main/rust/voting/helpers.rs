@@ -446,7 +446,10 @@ pub(super) fn java_note_info_array(
 }
 
 fn java_note_info(env: &mut JNIEnv<'_>, note: &JObject<'_>) -> anyhow::Result<NoteInfo> {
-    let scope = require_note_scope(u32::try_from(env.get_field(note, "scope", "I")?.i()?)?)?;
+    let scope = require_note_scope(jint_to_u32(
+        env.get_field(note, "scope", "I")?.i()?,
+        "scope",
+    )?)?;
 
     Ok(NoteInfo {
         commitment: require_len(
@@ -1092,6 +1095,8 @@ fn make_jni_witness_data<'local>(
     })
 }
 
+// JNI object construction needs a JNIEnv-bound local frame, so these builders
+// stay explicit instead of being modeled as TryFrom conversions.
 pub(super) fn make_jni_van_witness<'local>(
     env: &mut JNIEnv<'local>,
     witness: voting::tree_sync::VanWitness,
