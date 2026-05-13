@@ -18,6 +18,7 @@ pub extern "C" fn Java_cash_z_ecc_android_sdk_internal_jni_VotingRustBackend_bui
     account_index: jint,
     notes_json: JString<'local>,
     wallet_seed: JByteArray<'local>,
+    hotkey_seed: JByteArray<'local>,
     seed_fingerprint: JByteArray<'local>,
     round_name: JString<'local>,
     address_index: jint,
@@ -33,6 +34,8 @@ pub extern "C" fn Java_cash_z_ecc_android_sdk_internal_jni_VotingRustBackend_bui
 
         let seed_bytes =
             java_secret_bytes_at_least(env, &wallet_seed, "walletSeed", PROTOCOL_FIELD_BYTES)?;
+        let hotkey_seed_bytes =
+            java_secret_bytes_at_least(env, &hotkey_seed, "hotkeySeed", PROTOCOL_FIELD_BYTES)?;
         let derived_fvk_bytes =
             orchard_fvk_bytes_from_wallet_seed(seed_bytes.expose_secret(), network, account_index)?;
         if derived_fvk_bytes != fvk_bytes {
@@ -40,12 +43,8 @@ pub extern "C" fn Java_cash_z_ecc_android_sdk_internal_jni_VotingRustBackend_bui
                 "ufvk does not match walletSeed for network_id={network_id} account_index={account_index}"
             ));
         }
-        let hotkey_raw_address = hotkey_orchard_raw_address_from_wallet_seed(
-            seed_bytes.expose_secret(),
-            network,
-            account_index,
-            address_index,
-        )?;
+        let hotkey_raw_address =
+            hotkey_orchard_raw_address(hotkey_seed_bytes.expose_secret(), network, 0)?;
         let seed_fingerprint = java_bytes32(env, &seed_fingerprint, "seedFingerprint")?;
 
         let json_notes: Vec<JsonNoteInfo> = json_from_jstring(env, &notes_json, "notesJson")?;

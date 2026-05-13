@@ -127,6 +127,7 @@ interface TypesafeVotingDb {
         accountIndex: Int,
         notesJson: String,
         walletSeed: ByteArray,
+        hotkeySeed: ByteArray,
         seedFingerprint: ByteArray,
         roundName: String,
         addressIndex: Int
