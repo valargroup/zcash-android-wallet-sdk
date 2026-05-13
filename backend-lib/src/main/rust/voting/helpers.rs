@@ -86,6 +86,7 @@ pub(super) const PROTOCOL_FIELD_BYTES: usize = 32;
 pub(super) const VOTE_COMMITMENT_BYTES: usize = PROTOCOL_FIELD_BYTES;
 pub(super) const BLIND_BYTES: usize = PROTOCOL_FIELD_BYTES;
 pub(super) const SHARE_NULLIFIER_BYTES: usize = PROTOCOL_FIELD_BYTES;
+pub(super) const HOTKEY_SECRET_KEY_BYTES: usize = PROTOCOL_FIELD_BYTES;
 pub(super) const HOTKEY_PUBLIC_KEY_BYTES: usize = PROTOCOL_FIELD_BYTES;
 pub(super) const SPEND_AUTH_SIG_BYTES: usize = 64;
 pub(super) const NOTE_SCOPE_EXTERNAL: u32 = 0;
@@ -379,23 +380,20 @@ pub(super) fn network_from_id(id: jint) -> anyhow::Result<Network> {
     }
 }
 
-pub(super) fn hotkey_orchard_raw_address_from_wallet_seed(
-    wallet_seed: &[u8],
+pub(super) fn hotkey_orchard_raw_address(
+    hotkey_seed: &[u8],
     network: Network,
     account_index: u32,
-    address_index: u32,
 ) -> anyhow::Result<Vec<u8>> {
     let account_id = zip32::AccountId::try_from(account_index)
         .map_err(|_| anyhow!("invalid account_index {}", account_index))?;
-    let usk = UnifiedSpendingKey::from_seed(&network, wallet_seed, account_id)
-        .map_err(|e| anyhow!("failed to derive hotkey USK from wallet seed: {}", e))?;
+    let usk = UnifiedSpendingKey::from_seed(&network, hotkey_seed, account_id)
+        .map_err(|e| anyhow!("failed to derive hotkey USK: {}", e))?;
     let fvk = usk.to_unified_full_viewing_key();
     let orchard_fvk = fvk
         .orchard()
         .ok_or_else(|| anyhow!("hotkey UFVK has no Orchard component"))?;
-    // voting-circuits treats address_index as the diversifier index for the
-    // external Orchard scope when reconstructing the hotkey address for ZKP #2.
-    let addr = orchard_fvk.address_at(address_index, Scope::External);
+    let addr = orchard_fvk.address_at(0u32, Scope::External);
     require_len(
         addr.to_raw_address_bytes().to_vec(),
         "hotkey_raw_address",
@@ -1413,13 +1411,11 @@ pub(super) fn make_jni_voting_hotkey<'local>(
     hotkey: voting::types::VotingHotkey,
 ) -> anyhow::Result<jobject> {
     let class = env.find_class(JNI_VOTING_HOTKEY)?;
-    let secret_key = SecretVec::new(hotkey.secret_key);
-    let secret_key_len = secret_key.expose_secret().len();
-    if secret_key_len != PROTOCOL_FIELD_BYTES {
-        return Err(anyhow!(
-            "hotkey_secret_key must be exactly {PROTOCOL_FIELD_BYTES} bytes, got {secret_key_len}"
-        ));
-    }
+    require_len(
+        hotkey.secret_key,
+        "hotkey_secret_key",
+        HOTKEY_SECRET_KEY_BYTES,
+    )?;
     let public_key = require_len(
         hotkey.public_key,
         "hotkey_public_key",
@@ -1819,20 +1815,6 @@ mod tests {
 
     const TEST_ROUND_ID: &str = "round-id";
     const TEST_WALLET_ID: &str = "wallet-id";
-
-    #[test]
-    fn hotkey_orchard_raw_address_uses_address_index() {
-        let seed = [0x42_u8; 64];
-
-        let index_zero =
-            hotkey_orchard_raw_address_from_wallet_seed(&seed, Network::TestNetwork, 0, 0).unwrap();
-        let index_one =
-            hotkey_orchard_raw_address_from_wallet_seed(&seed, Network::TestNetwork, 0, 1).unwrap();
-
-        assert_eq!(ORCHARD_RAW_ADDRESS_BYTES, index_zero.len());
-        assert_eq!(ORCHARD_RAW_ADDRESS_BYTES, index_one.len());
-        assert_ne!(index_zero, index_one);
-    }
 
     #[test]
     fn nu6_branch_id_comes_from_protocol_crate() {

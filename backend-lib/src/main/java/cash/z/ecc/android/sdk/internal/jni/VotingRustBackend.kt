@@ -311,6 +311,7 @@ class VotingRustBackend private constructor() {
             accountIndex: Int,
             notes: List<JniNoteInfo>,
             walletSeed: ByteArray,
+            hotkeySeed: ByteArray,
             seedFingerprint: ByteArray,
             roundName: String,
             addressIndex: Int
@@ -325,6 +326,7 @@ class VotingRustBackend private constructor() {
                     accountIndex,
                     notes.toTypedArray(),
                     walletSeed,
+                    hotkeySeed,
                     seedFingerprint,
                     roundName,
                     addressIndex
@@ -373,9 +375,7 @@ class VotingRustBackend private constructor() {
             pirServerUrl: String,
             networkId: Int,
             notes: List<JniNoteInfo>,
-            walletSeed: ByteArray,
-            accountIndex: Int,
-            addressIndex: Int,
+            hotkeySeed: ByteArray,
             proofProgress: VotingProofProgressCallback?
         ): JniDelegationProofResult =
             withHandle { handle ->
@@ -386,9 +386,7 @@ class VotingRustBackend private constructor() {
                     pirServerUrl,
                     networkId,
                     notes.toTypedArray(),
-                    walletSeed,
-                    accountIndex,
-                    addressIndex,
+                    hotkeySeed,
                     proofProgress?.withVotingDbReentryGuard()
                 ) ?: error("buildAndProveDelegation returned null")
             }
@@ -882,6 +880,7 @@ class VotingRustBackend private constructor() {
             accountIndex: Int,
             notes: Array<JniNoteInfo>,
             walletSeed: ByteArray,
+            hotkeySeed: ByteArray,
             seedFingerprint: ByteArray,
             roundName: String,
             addressIndex: Int
@@ -948,9 +947,7 @@ class VotingRustBackend private constructor() {
             pirServerUrl: String,
             networkId: Int,
             notes: Array<JniNoteInfo>,
-            walletSeed: ByteArray,
-            accountIndex: Int,
-            addressIndex: Int,
+            hotkeySeed: ByteArray,
             proofProgress: VotingProofProgressCallback?
         ): JniDelegationProofResult?
 

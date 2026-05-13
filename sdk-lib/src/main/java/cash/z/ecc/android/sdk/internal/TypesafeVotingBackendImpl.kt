@@ -310,6 +310,7 @@ internal interface VotingDbBackend {
         accountIndex: Int,
         notes: List<JniNoteInfo>,
         walletSeed: ByteArray,
+        hotkeySeed: ByteArray,
         seedFingerprint: ByteArray,
         roundName: String,
         addressIndex: Int
@@ -336,9 +337,7 @@ internal interface VotingDbBackend {
         pirServerUrl: String,
         networkId: Int,
         notes: List<JniNoteInfo>,
-        walletSeed: ByteArray,
-        accountIndex: Int,
-        addressIndex: Int,
+        hotkeySeed: ByteArray,
         proofProgress: VotingProofProgressCallback?
     ): JniDelegationProofResult
 
@@ -520,6 +519,7 @@ private class RustVotingDbBackend(
         accountIndex: Int,
         notes: List<JniNoteInfo>,
         walletSeed: ByteArray,
+        hotkeySeed: ByteArray,
         seedFingerprint: ByteArray,
         roundName: String,
         addressIndex: Int
@@ -532,6 +532,7 @@ private class RustVotingDbBackend(
             accountIndex,
             notes,
             walletSeed,
+            hotkeySeed,
             seedFingerprint,
             roundName,
             addressIndex
@@ -565,9 +566,7 @@ private class RustVotingDbBackend(
         pirServerUrl: String,
         networkId: Int,
         notes: List<JniNoteInfo>,
-        walletSeed: ByteArray,
-        accountIndex: Int,
-        addressIndex: Int,
+        hotkeySeed: ByteArray,
         proofProgress: VotingProofProgressCallback?
     ): JniDelegationProofResult =
         votingDb.buildAndProveDelegation(
@@ -576,9 +575,7 @@ private class RustVotingDbBackend(
             pirServerUrl,
             networkId,
             notes,
-            walletSeed,
-            accountIndex,
-            addressIndex,
+            hotkeySeed,
             proofProgress
         )
 
@@ -823,6 +820,7 @@ internal class TypesafeVotingDbImpl(
         accountIndex: Int,
         notes: List<VotingNoteInfo>,
         walletSeed: ByteArray,
+        hotkeySeed: ByteArray,
         seedFingerprint: ByteArray,
         roundName: String,
         addressIndex: Int
@@ -836,6 +834,7 @@ internal class TypesafeVotingDbImpl(
                 accountIndex,
                 notes.toJniNoteInfos(),
                 walletSeed,
+                hotkeySeed,
                 seedFingerprint,
                 roundName,
                 addressIndex
@@ -870,9 +869,7 @@ internal class TypesafeVotingDbImpl(
         pirServerUrl: String,
         networkId: Int,
         notes: List<VotingNoteInfo>,
-        walletSeed: ByteArray,
-        accountIndex: Int,
-        addressIndex: Int,
+        hotkeySeed: ByteArray,
         proofProgress: ((Double) -> Unit)?
     ): DelegationProofResult =
         votingDb
@@ -882,9 +879,7 @@ internal class TypesafeVotingDbImpl(
                 pirServerUrl,
                 networkId,
                 notes.toJniNoteInfos(),
-                walletSeed,
-                accountIndex,
-                addressIndex,
+                hotkeySeed,
                 proofProgress?.asVotingProgressCallback()
             ).toDelegationProofResult()
 

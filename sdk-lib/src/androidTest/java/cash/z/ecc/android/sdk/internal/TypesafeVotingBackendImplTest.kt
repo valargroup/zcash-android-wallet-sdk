@@ -241,9 +241,7 @@ class TypesafeVotingBackendImplTest {
                     pirServerUrl = "https://pir.example",
                     networkId = 1,
                     notes = notes,
-                    walletSeed = walletSeed,
-                    accountIndex = 5,
-                    addressIndex = 6
+                    hotkeySeed = walletSeed
                 ) { progress ->
                     progressValue = progress
                 }
@@ -252,9 +250,7 @@ class TypesafeVotingBackendImplTest {
             assertEquals("https://pir.example", backend.buildAndProvePirServerUrl)
             assertEquals(1, backend.buildAndProveNetworkId)
             assertEquals(jniNotes, backend.buildAndProveNotes)
-            assertContentEquals(walletSeed, backend.buildAndProveWalletSeed)
-            assertEquals(5, backend.buildAndProveAccountIndex)
-            assertEquals(6, backend.buildAndProveAddressIndex)
+            assertContentEquals(walletSeed, backend.buildAndProveHotkeySeed)
             assertNotNull(backend.buildAndProveProgress).onProgress(0.75)
             assertEquals(0.75, progressValue)
             assertContentEquals(field(13), proof.nfSigned)
@@ -846,9 +842,7 @@ class TypesafeVotingBackendImplTest {
         var buildAndProvePirServerUrl: String? = null
         var buildAndProveNetworkId: Int? = null
         var buildAndProveNotes: List<JniNoteInfo>? = null
-        var buildAndProveWalletSeed: ByteArray = ByteArray(0)
-        var buildAndProveAccountIndex: Int? = null
-        var buildAndProveAddressIndex: Int? = null
+        var buildAndProveHotkeySeed: ByteArray = ByteArray(0)
         var buildAndProveProgress: VotingProofProgressCallback? = null
         var submissionRoundId: String? = null
         var submissionBundleIndex: Int? = null
@@ -974,6 +968,7 @@ class TypesafeVotingBackendImplTest {
             accountIndex: Int,
             notes: List<JniNoteInfo>,
             walletSeed: ByteArray,
+            hotkeySeed: ByteArray,
             seedFingerprint: ByteArray,
             roundName: String,
             addressIndex: Int
@@ -1012,9 +1007,7 @@ class TypesafeVotingBackendImplTest {
             pirServerUrl: String,
             networkId: Int,
             notes: List<JniNoteInfo>,
-            walletSeed: ByteArray,
-            accountIndex: Int,
-            addressIndex: Int,
+            hotkeySeed: ByteArray,
             proofProgress: VotingProofProgressCallback?
         ): JniDelegationProofResult {
             buildAndProveRoundId = roundId
@@ -1022,9 +1015,7 @@ class TypesafeVotingBackendImplTest {
             buildAndProvePirServerUrl = pirServerUrl
             buildAndProveNetworkId = networkId
             buildAndProveNotes = notes
-            buildAndProveWalletSeed = walletSeed
-            buildAndProveAccountIndex = accountIndex
-            buildAndProveAddressIndex = addressIndex
+            buildAndProveHotkeySeed = hotkeySeed
             buildAndProveProgress = proofProgress
             return proofResult
         }

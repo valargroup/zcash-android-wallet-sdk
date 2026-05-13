@@ -110,6 +110,7 @@ internal interface TypesafeVotingDb {
         accountIndex: Int,
         notes: List<VotingNoteInfo>,
         walletSeed: ByteArray,
+        hotkeySeed: ByteArray,
         seedFingerprint: ByteArray,
         roundName: String,
         addressIndex: Int
@@ -136,9 +137,7 @@ internal interface TypesafeVotingDb {
         pirServerUrl: String,
         networkId: Int,
         notes: List<VotingNoteInfo>,
-        walletSeed: ByteArray,
-        accountIndex: Int,
-        addressIndex: Int,
+        hotkeySeed: ByteArray,
         proofProgress: ((Double) -> Unit)? = null
     ): DelegationProofResult
 
