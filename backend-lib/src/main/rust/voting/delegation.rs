@@ -30,7 +30,10 @@ pub extern "C" fn Java_cash_z_ecc_android_sdk_internal_jni_VotingRustBackend_bui
         let network = network_from_id(network_id)?;
         let bundle_index = jint_to_u32(bundle_index, "bundle_index")?;
         let account_index = jint_to_u32(account_index, "account_index")?;
-        let address_index = jint_to_u32(address_index, "address_index")?;
+        let address_index = require_zero(
+            jint_to_u32(address_index, "address_index")?,
+            "address_index",
+        )?;
         let ufvk_str = java_string_to_rust(env, &ufvk)?;
         let fvk_bytes = orchard_fvk_bytes(&ufvk_str, network)?;
 

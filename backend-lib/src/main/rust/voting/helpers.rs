@@ -170,6 +170,16 @@ pub(super) fn jint_to_u32(value: jint, field: &str) -> anyhow::Result<u32> {
     u32::try_from(value).map_err(|_| anyhow!("{field} must be non-negative, got {value}"))
 }
 
+pub(super) fn require_zero(value: u32, field: &str) -> anyhow::Result<u32> {
+    if value == 0 {
+        Ok(value)
+    } else {
+        Err(anyhow!(
+            "{field} must be 0 until nonzero indices are supported, got {value}"
+        ))
+    }
+}
+
 pub(super) fn jlong_to_u64(value: jlong, field: &str) -> anyhow::Result<u64> {
     u64::try_from(value).map_err(|_| anyhow!("{field} must be non-negative, got {value}"))
 }
@@ -1902,6 +1912,14 @@ mod tests {
             .expect_err("regression rejected");
 
         assert!(err.to_string().contains("refusing to regress round phase"));
+    }
+
+    #[test]
+    fn require_zero_rejects_nonzero_values() {
+        assert_eq!(0, require_zero(0, "address_index").unwrap());
+
+        let err = require_zero(1, "address_index").expect_err("nonzero rejected");
+        assert!(err.to_string().contains("address_index must be 0"));
     }
 
     fn test_db() -> VotingDb {

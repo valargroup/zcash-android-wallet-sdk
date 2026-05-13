@@ -44,7 +44,8 @@ class VotingRustBackendTest {
         private const val SESSION_JSON = "{\"round\":\"one\"}"
         private const val TESTNET_NETWORK_ID = JNI_VOTING_NETWORK_ID_TESTNET
         private const val ACCOUNT_INDEX = 0
-        private const val ADDRESS_INDEX = 1
+        private const val ADDRESS_INDEX = 0
+        private const val UNSUPPORTED_ADDRESS_INDEX = 1
         private const val MAINNET_NETWORK_ID = JNI_VOTING_NETWORK_ID_MAINNET
         private const val SECOND_ROUND_ID = "round-2"
         private const val PCZT_ROUND_ID =
@@ -696,6 +697,35 @@ class VotingRustBackendTest {
                     JniRoundPhase.INITIALIZED,
                     assertNotNull(db.getRoundState(PCZT_ROUND_ID)).roundPhase
                 )
+            } finally {
+                db.close()
+            }
+        }
+
+    @Test
+    fun build_governance_pczt_rejects_unsupported_address_index() =
+        runTest {
+            val db = VotingRustBackend.new().openVotingDb(newDbPath(), WALLET_ID)
+            try {
+                val notes = notes(noteCount = 6, value = PCZT_NOTE_VALUE)
+                val ufvk = deriveTestUfvk()
+                db.initPcztRoundWithBundles(notes)
+
+                assertRuntimeExceptionContains("address_index must be 0") {
+                    db.buildGovernancePczt(
+                        roundId = PCZT_ROUND_ID,
+                        bundleIndex = 1,
+                        ufvk = ufvk,
+                        networkId = TESTNET_NETWORK_ID,
+                        accountIndex = ACCOUNT_INDEX,
+                        notes = notes,
+                        walletSeed = HOTKEY_SEED,
+                        hotkeySeed = HOTKEY_SEED,
+                        seedFingerprint = SEED_FINGERPRINT,
+                        roundName = ROUND_NAME,
+                        addressIndex = UNSUPPORTED_ADDRESS_INDEX
+                    )
+                }
             } finally {
                 db.close()
             }
