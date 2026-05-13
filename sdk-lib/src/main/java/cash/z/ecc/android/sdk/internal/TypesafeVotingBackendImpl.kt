@@ -605,6 +605,7 @@ private fun JSONArray.toHexList(): List<ByteArray> =
 private fun ((Double) -> Unit).asVotingProgressCallback() =
     VotingProofProgressCallback { progress -> invoke(progress) }
 
+@Suppress("TooGenericExceptionCaught")
 private suspend fun <T> runExpectedMissingRowLookup(block: suspend () -> T): T? =
     try {
         block()
