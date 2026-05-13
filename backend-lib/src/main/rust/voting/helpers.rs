@@ -673,24 +673,8 @@ pub(super) fn update_round_phase_forward(
 ) -> anyhow::Result<()> {
     let conn = db.conn();
     let wallet_id = db.wallet_id();
-    let current = voting::storage::queries::get_round_state(&conn, round_id, &wallet_id)
-        .map_err(|e| anyhow!("get_round_state before phase update: {}", e))?
-        .phase;
-    let current_rank = round_phase_to_u32(current);
-    let requested_rank = round_phase_to_u32(phase);
-
-    if current_rank > requested_rank {
-        return Err(anyhow!(
-            "refusing to regress round phase for {round_id}: current={current_rank}, requested={requested_rank}"
-        ));
-    }
-
-    if current_rank == requested_rank {
-        return Ok(());
-    }
-
-    voting::storage::queries::update_round_phase(&conn, round_id, &wallet_id, phase)
-        .map_err(|e| anyhow!("update_round_phase: {}", e))
+    voting::storage::queries::advance_round_phase(&conn, round_id, &wallet_id, phase)
+        .map_err(|e| anyhow!("advance_round_phase: {}", e))
 }
 
 pub(super) fn select_bundle_notes(
