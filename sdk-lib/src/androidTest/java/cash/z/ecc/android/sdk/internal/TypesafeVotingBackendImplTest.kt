@@ -32,6 +32,7 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @Suppress("LargeClass", "LongMethod", "LongParameterList", "MagicNumber", "TooManyFunctions")
@@ -516,6 +517,47 @@ class TypesafeVotingBackendImplTest {
         }
 
     @Test
+    fun missing_recovery_rows_from_native_exception_map_to_expected_state() =
+        runTest {
+            val backend =
+                RecordingVotingDbBackend(
+                    proofResult = jniDelegationProofResult(),
+                    submissionResult = jniDelegationSubmissionResult(),
+                    keystoneSubmissionResult = jniDelegationSubmissionResult(),
+                    recoveryLookupException =
+                        RuntimeException(
+                            "native lookup failed",
+                            IllegalStateException("query returned no rows")
+                        )
+                )
+            val db = TypesafeVotingDbImpl(backend)
+
+            assertEquals(VotingTxHashLookup.Missing, db.getDelegationTxHash("round", 0))
+            assertEquals(VotingTxHashLookup.Missing, db.getVoteTxHash("round", 0, 0))
+            assertNull(db.getCommitmentBundle("round", 0, 0))
+        }
+
+    @Test
+    fun unexpected_recovery_lookup_exceptions_still_fail() =
+        runTest {
+            val backend =
+                RecordingVotingDbBackend(
+                    proofResult = jniDelegationProofResult(),
+                    submissionResult = jniDelegationSubmissionResult(),
+                    keystoneSubmissionResult = jniDelegationSubmissionResult(),
+                    recoveryLookupException = RuntimeException("database is locked")
+                )
+            val db = TypesafeVotingDbImpl(backend)
+
+            val error =
+                assertFailsWith<RuntimeException> {
+                    db.getDelegationTxHash("round", 0)
+                }
+
+            assertEquals("database is locked", error.message)
+        }
+
+    @Test
     fun vote_commitment_wrapper_rejects_invalid_commitment_result() =
         runTest {
             val backend =
@@ -826,7 +868,8 @@ class TypesafeVotingBackendImplTest {
         private val voteTxHash: String? = null,
         private val commitmentRecord: JniCommitmentBundleRecord? = null,
         private val shareRecords: Array<JniShareDelegationRecord> = emptyArray(),
-        private val unconfirmedShareRecords: Array<JniShareDelegationRecord> = emptyArray()
+        private val unconfirmedShareRecords: Array<JniShareDelegationRecord> = emptyArray(),
+        private val recoveryLookupException: RuntimeException? = null
     ) : VotingDbBackend {
         var storeWitnessesRoundId: String? = null
         var storeWitnessesBundleIndex: Int? = null
@@ -1143,6 +1186,7 @@ class TypesafeVotingBackendImplTest {
         override suspend fun getDelegationTxHash(roundId: String, bundleIndex: Int): String? {
             getDelegationTxRoundId = roundId
             getDelegationTxBundleIndex = bundleIndex
+            recoveryLookupException?.let { throw it }
             return delegationTxHash
         }
 
@@ -1172,6 +1216,7 @@ class TypesafeVotingBackendImplTest {
             getVoteTxRoundId = roundId
             getVoteTxBundleIndex = bundleIndex
             getVoteTxProposalId = proposalId
+            recoveryLookupException?.let { throw it }
             return voteTxHash
         }
 
@@ -1197,6 +1242,7 @@ class TypesafeVotingBackendImplTest {
             getCommitmentRoundId = roundId
             getCommitmentBundleIndex = bundleIndex
             getCommitmentProposalId = proposalId
+            recoveryLookupException?.let { throw it }
             return commitmentRecord
         }
 

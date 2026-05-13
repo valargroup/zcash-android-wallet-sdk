@@ -40,14 +40,13 @@ pub extern "C" fn Java_cash_z_ecc_android_sdk_internal_jni_VotingRustBackend_get
     let res = catch_unwind(&mut env, |env| {
         let db = db_from_handle(db_handle)?;
         let _access_lock = db.access_lock()?;
-        let tx_hash = match db.get_delegation_tx_hash(
-            &java_string_to_rust(env, &round_id)?,
-            jint_to_u32(bundle_index, "bundle_index")?,
-        ) {
-            Ok(tx_hash) => tx_hash,
-            Err(e) if is_query_returned_no_rows(&e) => None,
-            Err(e) => return Err(anyhow!("get_delegation_tx_hash: {e}")),
-        };
+        let tx_hash = optional_recovery_lookup(
+            db.get_delegation_tx_hash(
+                &java_string_to_rust(env, &round_id)?,
+                jint_to_u32(bundle_index, "bundle_index")?,
+            ),
+            "get_delegation_tx_hash",
+        )?;
         match tx_hash {
             Some(value) => Ok(env.new_string(value)?.into_raw()),
             None => Ok(std::ptr::null_mut()),
@@ -122,15 +121,14 @@ pub extern "C" fn Java_cash_z_ecc_android_sdk_internal_jni_VotingRustBackend_get
     let res = catch_unwind(&mut env, |env| {
         let db = db_from_handle(db_handle)?;
         let _access_lock = db.access_lock()?;
-        let tx_hash = match db.get_vote_tx_hash(
-            &java_string_to_rust(env, &round_id)?,
-            jint_to_u32(bundle_index, "bundle_index")?,
-            jint_to_u32(proposal_id, "proposal_id")?,
-        ) {
-            Ok(tx_hash) => tx_hash,
-            Err(e) if is_query_returned_no_rows(&e) => None,
-            Err(e) => return Err(anyhow!("get_vote_tx_hash: {e}")),
-        };
+        let tx_hash = optional_recovery_lookup(
+            db.get_vote_tx_hash(
+                &java_string_to_rust(env, &round_id)?,
+                jint_to_u32(bundle_index, "bundle_index")?,
+                jint_to_u32(proposal_id, "proposal_id")?,
+            ),
+            "get_vote_tx_hash",
+        )?;
         match tx_hash {
             Some(value) => Ok(env.new_string(value)?.into_raw()),
             None => Ok(std::ptr::null_mut()),
@@ -139,8 +137,25 @@ pub extern "C" fn Java_cash_z_ecc_android_sdk_internal_jni_VotingRustBackend_get
     unwrap_exc_or(&mut env, res, std::ptr::null_mut())
 }
 
+fn optional_recovery_lookup<T, E>(
+    result: Result<Option<T>, E>,
+    label: &str,
+) -> anyhow::Result<Option<T>>
+where
+    E: std::fmt::Display,
+{
+    match result {
+        Ok(value) => Ok(value),
+        Err(error) if is_query_returned_no_rows(&error) => Ok(None),
+        Err(error) => Err(anyhow!("{label}: {error}")),
+    }
+}
+
 fn is_query_returned_no_rows(error: &impl std::fmt::Display) -> bool {
-    error.to_string().contains("Query returned no rows")
+    error
+        .to_string()
+        .to_ascii_lowercase()
+        .contains("query returned no rows")
 }
 
 #[unsafe(no_mangle)]
@@ -188,15 +203,14 @@ pub extern "C" fn Java_cash_z_ecc_android_sdk_internal_jni_VotingRustBackend_get
     let res = catch_unwind(&mut env, |env| {
         let db = db_from_handle(db_handle)?;
         let _access_lock = db.access_lock()?;
-        let record = match db.get_commitment_bundle(
-            &java_string_to_rust(env, &round_id)?,
-            jint_to_u32(bundle_index, "bundle_index")?,
-            jint_to_u32(proposal_id, "proposal_id")?,
-        ) {
-            Ok(record) => record,
-            Err(e) if is_query_returned_no_rows(&e) => None,
-            Err(e) => return Err(anyhow!("get_commitment_bundle: {e}")),
-        };
+        let record = optional_recovery_lookup(
+            db.get_commitment_bundle(
+                &java_string_to_rust(env, &round_id)?,
+                jint_to_u32(bundle_index, "bundle_index")?,
+                jint_to_u32(proposal_id, "proposal_id")?,
+            ),
+            "get_commitment_bundle",
+        )?;
         match record {
             Some((commitment, vc_tree_position)) => {
                 let commitment = StoredVoteCommitmentBundle::from_storage_json(&commitment)?;
@@ -371,4 +385,27 @@ fn java_string_array(
             java_string_to_rust(env, &value).map_err(|e| anyhow!("{field}[{index}]: {e}"))
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn optional_recovery_lookup_maps_missing_rows_to_none() {
+        let result: anyhow::Result<Option<String>> =
+            optional_recovery_lookup(Err("Query returned no rows"), "get_vote_tx_hash");
+
+        assert!(result.unwrap().is_none());
+    }
+
+    #[test]
+    fn optional_recovery_lookup_keeps_unexpected_errors_fatal() {
+        let result: anyhow::Result<Option<String>> =
+            optional_recovery_lookup(Err("database is locked"), "get_vote_tx_hash");
+
+        let error = result.unwrap_err().to_string();
+        assert!(error.contains("get_vote_tx_hash"));
+        assert!(error.contains("database is locked"));
+    }
 }
