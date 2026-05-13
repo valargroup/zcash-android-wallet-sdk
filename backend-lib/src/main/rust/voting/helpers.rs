@@ -201,28 +201,6 @@ pub(super) fn hotkey_orchard_raw_address(
     )
 }
 
-pub(super) fn hotkey_orchard_raw_address_from_wallet_seed(
-    wallet_seed: &[u8],
-    network: Network,
-    account_index: u32,
-    address_index: u32,
-) -> anyhow::Result<Vec<u8>> {
-    let account_id = zip32::AccountId::try_from(account_index)
-        .map_err(|_| anyhow!("invalid account_index {}", account_index))?;
-    let usk = UnifiedSpendingKey::from_seed(&network, wallet_seed, account_id)
-        .map_err(|e| anyhow!("failed to derive hotkey USK from wallet seed: {}", e))?;
-    let fvk = usk.to_unified_full_viewing_key();
-    let orchard_fvk = fvk
-        .orchard()
-        .ok_or_else(|| anyhow!("hotkey UFVK has no Orchard component"))?;
-    let addr = orchard_fvk.address_at(address_index, Scope::External);
-    require_len(
-        addr.to_raw_address_bytes().to_vec(),
-        "hotkey_raw_address",
-        ORCHARD_RAW_ADDRESS_BYTES,
-    )
-}
-
 pub(super) fn orchard_fvk_bytes_from_wallet_seed(
     wallet_seed: &[u8],
     network: Network,
@@ -391,29 +369,18 @@ pub(super) fn make_jni_voting_hotkey<'local>(
     hotkey: voting::types::VotingHotkey,
 ) -> anyhow::Result<jobject> {
     let class = env.find_class("cash/z/ecc/android/sdk/internal/model/voting/JniVotingHotkey")?;
-    let secret_key = SecretVec::new(require_len(
-        hotkey.secret_key,
-        "hotkey_secret_key",
-        HOTKEY_SECRET_KEY_BYTES,
-    )?);
+    require_len(hotkey.secret_key, "hotkey_secret_key", HOTKEY_SECRET_KEY_BYTES)?;
     let public_key = require_len(
         hotkey.public_key,
         "hotkey_public_key",
         HOTKEY_PUBLIC_KEY_BYTES,
     )?;
-    let sk_obj: JObject<'local> = env
-        .byte_array_from_slice(secret_key.expose_secret())?
-        .into();
     let pk_obj: JObject<'local> = env.byte_array_from_slice(&public_key)?.into();
     let addr_obj: JObject<'local> = env.new_string(&hotkey.address)?.into();
     let obj = env.new_object(
         &class,
-        "([B[BLjava/lang/String;)V",
-        &[
-            JValue::Object(&sk_obj),
-            JValue::Object(&pk_obj),
-            JValue::Object(&addr_obj),
-        ],
+        "([BLjava/lang/String;)V",
+        &[JValue::Object(&pk_obj), JValue::Object(&addr_obj)],
     )?;
     Ok(obj.into_raw())
 }
@@ -782,20 +749,6 @@ pub(super) fn received_note_to_note_info(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn hotkey_orchard_raw_address_uses_address_index() {
-        let seed = [0x42_u8; 64];
-
-        let index_zero =
-            hotkey_orchard_raw_address_from_wallet_seed(&seed, Network::TestNetwork, 0, 0).unwrap();
-        let index_one =
-            hotkey_orchard_raw_address_from_wallet_seed(&seed, Network::TestNetwork, 0, 1).unwrap();
-
-        assert_eq!(ORCHARD_RAW_ADDRESS_BYTES, index_zero.len());
-        assert_eq!(ORCHARD_RAW_ADDRESS_BYTES, index_one.len());
-        assert_ne!(index_zero, index_one);
-    }
 
     #[test]
     fn nu6_branch_id_comes_from_protocol_crate() {
