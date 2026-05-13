@@ -125,20 +125,25 @@ pub extern "C" fn Java_cash_z_ecc_android_sdk_internal_jni_VotingRustBackend_get
 ) -> jstring {
     let res = catch_unwind(&mut env, |env| {
         let handle = handle_from_jlong(db_handle)?;
-        let tx_hash = handle
-            .db
-            .get_vote_tx_hash(
-                &java_string_to_rust(env, &round_id)?,
-                jint_to_u32(bundle_index, "bundle_index")?,
-                jint_to_u32(proposal_id, "proposal_id")?,
-            )
-            .map_err(|e| anyhow!("get_vote_tx_hash: {}", e))?;
+        let tx_hash = match handle.db.get_vote_tx_hash(
+            &java_string_to_rust(env, &round_id)?,
+            jint_to_u32(bundle_index, "bundle_index")?,
+            jint_to_u32(proposal_id, "proposal_id")?,
+        ) {
+            Ok(tx_hash) => tx_hash,
+            Err(e) if is_query_returned_no_rows(&e) => None,
+            Err(e) => return Err(anyhow!("get_vote_tx_hash: {}", e)),
+        };
         match tx_hash {
             Some(value) => Ok(env.new_string(value)?.into_raw()),
             None => Ok(std::ptr::null_mut()),
         }
     });
     unwrap_exc_or(&mut env, res, std::ptr::null_mut())
+}
+
+fn is_query_returned_no_rows(error: &impl std::fmt::Display) -> bool {
+    error.to_string().contains("Query returned no rows")
 }
 
 #[unsafe(no_mangle)]
