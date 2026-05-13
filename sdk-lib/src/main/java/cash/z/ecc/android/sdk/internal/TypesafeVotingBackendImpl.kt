@@ -11,6 +11,7 @@ import cash.z.ecc.android.sdk.internal.jni.JNI_VOTE_SHARE_COUNT
 import cash.z.ecc.android.sdk.internal.jni.VotingProofProgressCallback
 import cash.z.ecc.android.sdk.internal.jni.VotingRustBackend
 import cash.z.ecc.android.sdk.internal.model.voting.JniBundleSetupResult
+import cash.z.ecc.android.sdk.internal.model.voting.JniCommitmentBundleRecord
 import cash.z.ecc.android.sdk.internal.model.voting.JniDelegationPirPrecomputeResult
 import cash.z.ecc.android.sdk.internal.model.voting.JniDelegationProofResult
 import cash.z.ecc.android.sdk.internal.model.voting.JniDelegationSubmissionResult
@@ -18,6 +19,7 @@ import cash.z.ecc.android.sdk.internal.model.voting.JniGovernancePczt
 import cash.z.ecc.android.sdk.internal.model.voting.JniNoteInfo
 import cash.z.ecc.android.sdk.internal.model.voting.JniRoundState
 import cash.z.ecc.android.sdk.internal.model.voting.JniRoundSummary
+import cash.z.ecc.android.sdk.internal.model.voting.JniShareDelegationRecord
 import cash.z.ecc.android.sdk.internal.model.voting.JniSharePayload
 import cash.z.ecc.android.sdk.internal.model.voting.JniVanWitness
 import cash.z.ecc.android.sdk.internal.model.voting.JniVoteCommitmentResult
@@ -392,6 +394,70 @@ internal interface VotingDbBackend {
         singleShare: Boolean,
         proofProgress: VotingProofProgressCallback?
     ): JniVoteCommitmentResult
+
+    suspend fun storeDelegationTxHash(roundId: String, bundleIndex: Int, txHash: String)
+
+    suspend fun getDelegationTxHash(roundId: String, bundleIndex: Int): String?
+
+    suspend fun storeVoteTxHash(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int,
+        txHash: String
+    )
+
+    suspend fun markVoteSubmitted(roundId: String, bundleIndex: Int, proposalId: Int)
+
+    suspend fun getVoteTxHash(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int
+    ): String?
+
+    suspend fun storeCommitmentBundle(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int,
+        commitment: JniVoteCommitmentResult,
+        vcTreePosition: Long
+    )
+
+    suspend fun getCommitmentBundle(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int
+    ): JniCommitmentBundleRecord?
+
+    suspend fun clearRecoveryState(roundId: String)
+
+    suspend fun recordShareDelegation(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int,
+        shareIndex: Int,
+        sentToUrls: List<String>,
+        nullifier: ByteArray,
+        submitAt: Long
+    )
+
+    suspend fun getShareDelegations(roundId: String): Array<JniShareDelegationRecord>
+
+    suspend fun getUnconfirmedDelegations(roundId: String): Array<JniShareDelegationRecord>
+
+    suspend fun markShareConfirmed(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int,
+        shareIndex: Int
+    )
+
+    suspend fun addSentServers(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int,
+        shareIndex: Int,
+        newUrls: List<String>
+    )
 }
 
 @Suppress("TooManyFunctions", "LongParameterList")
@@ -607,6 +673,92 @@ private class RustVotingDbBackend(
             singleShare,
             proofProgress
         )
+
+    override suspend fun storeDelegationTxHash(roundId: String, bundleIndex: Int, txHash: String) =
+        votingDb.storeDelegationTxHash(roundId, bundleIndex, txHash)
+
+    override suspend fun getDelegationTxHash(roundId: String, bundleIndex: Int): String? =
+        votingDb.getDelegationTxHash(roundId, bundleIndex)
+
+    override suspend fun storeVoteTxHash(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int,
+        txHash: String
+    ) = votingDb.storeVoteTxHash(roundId, bundleIndex, proposalId, txHash)
+
+    override suspend fun markVoteSubmitted(roundId: String, bundleIndex: Int, proposalId: Int) =
+        votingDb.markVoteSubmitted(roundId, bundleIndex, proposalId)
+
+    override suspend fun getVoteTxHash(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int
+    ): String? =
+        votingDb.getVoteTxHash(roundId, bundleIndex, proposalId)
+
+    override suspend fun storeCommitmentBundle(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int,
+        commitment: JniVoteCommitmentResult,
+        vcTreePosition: Long
+    ) = votingDb.storeCommitmentBundle(
+        roundId,
+        bundleIndex,
+        proposalId,
+        commitment,
+        vcTreePosition
+    )
+
+    override suspend fun getCommitmentBundle(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int
+    ): JniCommitmentBundleRecord? =
+        votingDb.getCommitmentBundle(roundId, bundleIndex, proposalId)
+
+    override suspend fun clearRecoveryState(roundId: String) =
+        votingDb.clearRecoveryState(roundId)
+
+    override suspend fun recordShareDelegation(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int,
+        shareIndex: Int,
+        sentToUrls: List<String>,
+        nullifier: ByteArray,
+        submitAt: Long
+    ) = votingDb.recordShareDelegation(
+        roundId,
+        bundleIndex,
+        proposalId,
+        shareIndex,
+        sentToUrls,
+        nullifier,
+        submitAt
+    )
+
+    override suspend fun getShareDelegations(roundId: String): Array<JniShareDelegationRecord> =
+        votingDb.getShareDelegations(roundId)
+
+    override suspend fun getUnconfirmedDelegations(roundId: String): Array<JniShareDelegationRecord> =
+        votingDb.getUnconfirmedDelegations(roundId)
+
+    override suspend fun markShareConfirmed(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int,
+        shareIndex: Int
+    ) = votingDb.markShareConfirmed(roundId, bundleIndex, proposalId, shareIndex)
+
+    override suspend fun addSentServers(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int,
+        shareIndex: Int,
+        newUrls: List<String>
+    ) = votingDb.addSentServers(roundId, bundleIndex, proposalId, shareIndex, newUrls)
 }
 
 @Suppress("TooManyFunctions", "LongParameterList")
@@ -837,6 +989,107 @@ internal class TypesafeVotingDbImpl(
             ).also { commitment ->
                 commitment.requireValid()
             }
+
+    override suspend fun storeDelegationTxHash(roundId: String, bundleIndex: Int, txHash: String) =
+        votingDb.storeDelegationTxHash(roundId, bundleIndex, txHash)
+
+    override suspend fun getDelegationTxHash(
+        roundId: String,
+        bundleIndex: Int
+    ): VotingTxHashLookup =
+        votingDb.getDelegationTxHash(roundId, bundleIndex).toVotingTxHashLookup()
+
+    override suspend fun storeVoteTxHash(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int,
+        txHash: String
+    ) = votingDb.storeVoteTxHash(roundId, bundleIndex, proposalId, txHash)
+
+    override suspend fun markVoteSubmitted(roundId: String, bundleIndex: Int, proposalId: Int) =
+        votingDb.markVoteSubmitted(roundId, bundleIndex, proposalId)
+
+    override suspend fun getVoteTxHash(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int
+    ): VotingTxHashLookup =
+        votingDb.getVoteTxHash(roundId, bundleIndex, proposalId).toVotingTxHashLookup()
+
+    override suspend fun storeCommitmentBundle(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int,
+        commitment: JniVoteCommitmentResult,
+        vcTreePosition: Long
+    ) {
+        commitment.requireValid()
+        votingDb.storeCommitmentBundle(
+            roundId,
+            bundleIndex,
+            proposalId,
+            commitment,
+            vcTreePosition
+        )
+    }
+
+    override suspend fun getCommitmentBundle(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int
+    ): CommitmentBundleRecord? =
+        votingDb
+            .getCommitmentBundle(roundId, bundleIndex, proposalId)
+            ?.toCommitmentBundleRecord()
+
+    override suspend fun clearRecoveryState(roundId: String) =
+        votingDb.clearRecoveryState(roundId)
+
+    override suspend fun recordShareDelegation(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int,
+        shareIndex: Int,
+        sentToUrls: List<String>,
+        nullifier: ByteArray,
+        submitAt: Long
+    ) {
+        nullifier.requireByteArraySize("nullifier", JNI_PROTOCOL_FIELD_BYTES_SIZE)
+        votingDb.recordShareDelegation(
+            roundId,
+            bundleIndex,
+            proposalId,
+            shareIndex,
+            sentToUrls,
+            nullifier,
+            submitAt
+        )
+    }
+
+    override suspend fun getShareDelegations(roundId: String): List<ShareDelegationRecord> =
+        votingDb
+            .getShareDelegations(roundId)
+            .map { it.toShareDelegationRecord() }
+
+    override suspend fun getUnconfirmedDelegations(roundId: String): List<ShareDelegationRecord> =
+        votingDb
+            .getUnconfirmedDelegations(roundId)
+            .map { it.toShareDelegationRecord() }
+
+    override suspend fun markShareConfirmed(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int,
+        shareIndex: Int
+    ) = votingDb.markShareConfirmed(roundId, bundleIndex, proposalId, shareIndex)
+
+    override suspend fun addSentServers(
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int,
+        shareIndex: Int,
+        newUrls: List<String>
+    ) = votingDb.addSentServers(roundId, bundleIndex, proposalId, shareIndex, newUrls)
 }
 
 internal fun JniGovernancePczt.toGovernancePcztResult(): GovernancePcztResult {
@@ -909,6 +1162,36 @@ internal fun JniDelegationSubmissionResult.toDelegationSubmissionResult(): Deleg
         govComm = govComm,
         govNullifiers = govNullifiers,
         voteRoundId = voteRoundId
+    )
+}
+
+private fun String?.toVotingTxHashLookup(): VotingTxHashLookup =
+    if (this == null) {
+        VotingTxHashLookup.Missing
+    } else {
+        VotingTxHashLookup.Found(this)
+    }
+
+private fun JniCommitmentBundleRecord.toCommitmentBundleRecord(): CommitmentBundleRecord {
+    commitment.requireValid()
+    return CommitmentBundleRecord(
+        commitment = commitment,
+        vcTreePosition = vcTreePosition
+    )
+}
+
+private fun JniShareDelegationRecord.toShareDelegationRecord(): ShareDelegationRecord {
+    nullifier.requireByteArraySize("nullifier", JNI_PROTOCOL_FIELD_BYTES_SIZE)
+    return ShareDelegationRecord(
+        roundId = roundId,
+        bundleIndex = bundleIndex,
+        proposalId = proposalId,
+        shareIndex = shareIndex,
+        sentToUrls = sentToUrls,
+        nullifier = nullifier,
+        confirmed = confirmed,
+        submitAt = submitAt,
+        createdAt = createdAt
     )
 }
 
