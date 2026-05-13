@@ -211,6 +211,7 @@ private class TypesafeVotingDbImpl(
         accountIndex: Int,
         notesJson: String,
         walletSeed: ByteArray,
+        hotkeySeed: ByteArray,
         seedFingerprint: ByteArray,
         roundName: String,
         addressIndex: Int
@@ -224,6 +225,7 @@ private class TypesafeVotingDbImpl(
                 accountIndex,
                 notesJson,
                 walletSeed,
+                hotkeySeed,
                 seedFingerprint,
                 roundName,
                 addressIndex

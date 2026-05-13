@@ -298,6 +298,7 @@ class VotingRustBackend private constructor() {
             accountIndex: Int,
             notesJson: String,
             walletSeed: ByteArray,
+            hotkeySeed: ByteArray,
             seedFingerprint: ByteArray,
             roundName: String,
             addressIndex: Int
@@ -312,6 +313,7 @@ class VotingRustBackend private constructor() {
                     accountIndex,
                     notesJson,
                     walletSeed,
+                    hotkeySeed,
                     seedFingerprint,
                     roundName,
                     addressIndex
@@ -880,6 +882,7 @@ class VotingRustBackend private constructor() {
             accountIndex: Int,
             notesJson: String,
             walletSeed: ByteArray,
+            hotkeySeed: ByteArray,
             seedFingerprint: ByteArray,
             roundName: String,
             addressIndex: Int
