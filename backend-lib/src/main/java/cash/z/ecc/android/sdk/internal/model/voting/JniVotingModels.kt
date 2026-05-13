@@ -137,11 +137,13 @@ data class JniWireEncryptedShare(
 /**
  * Typed JNI carrier for vote commitment outputs.
  *
- * `shareBlinds`, `rVpk`, and `alphaV` are transient reveal/signing inputs.
- * They should not be persisted or logged; they are carried here only because
- * follow-up JNI calls consume the typed commitment result. Encrypted-share
- * plaintext and encryption randomness remain Rust-only and are not included in
- * [encShares].
+ * `shareBlinds`, `rVpk`, and `alphaV` are secret reveal/signing inputs. They
+ * must not be logged or sent to remote services. The voting recovery store may
+ * persist them as sensitive recovery state so interrupted vote submission can
+ * resume without rebuilding a different commitment. This is an intentional
+ * recovery tradeoff until the SDK has a rehydration or protected-storage design.
+ * Encrypted-share plaintext and encryption randomness remain Rust-only and are
+ * not included in [encShares].
  */
 @Keep
 data class JniVoteCommitmentResult(
@@ -250,6 +252,12 @@ data class JniVoteCommitmentResult(
     }
 }
 
+/**
+ * Commitment recovery record returned from SDK-managed app-private storage.
+ *
+ * [commitment] contains secret recovery material; callers must treat this
+ * record with the same handling rules as [JniVoteCommitmentResult].
+ */
 @Keep
 data class JniCommitmentBundleRecord(
     val commitment: JniVoteCommitmentResult,

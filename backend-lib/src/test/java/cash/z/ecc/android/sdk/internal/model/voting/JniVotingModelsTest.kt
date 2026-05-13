@@ -9,20 +9,22 @@ class JniVotingModelsTest {
     @Test
     fun vote_commitment_result_to_string_redacts_signing_material() {
         val text =
-            JniVoteCommitmentResult(
-                vanNullifier = byteArrayOf(1),
-                voteAuthorityNoteNew = byteArrayOf(2),
-                voteCommitment = byteArrayOf(3),
-                proposalId = 4,
-                proof = byteArrayOf(5),
-                encShares = listOf(JniWireEncryptedShare(byteArrayOf(6), byteArrayOf(7), 0)),
-                anchorHeight = 8,
-                voteRoundId = "round",
-                sharesHash = byteArrayOf(9),
-                shareBlinds = listOf(byteArrayOf(101)),
-                shareComms = listOf(byteArrayOf(10)),
-                rVpk = byteArrayOf(102),
-                alphaV = byteArrayOf(103)
+            sampleCommitmentResult().toString()
+
+        assertTrue(text.contains("shareBlinds=***"))
+        assertTrue(text.contains("rVpk=***"))
+        assertTrue(text.contains("alphaV=***"))
+        assertFalse(text.contains("101"))
+        assertFalse(text.contains("102"))
+        assertFalse(text.contains("103"))
+    }
+
+    @Test
+    fun commitment_bundle_record_to_string_redacts_signing_material() {
+        val text =
+            JniCommitmentBundleRecord(
+                commitment = sampleCommitmentResult(),
+                vcTreePosition = 11
             ).toString()
 
         assertTrue(text.contains("shareBlinds=***"))
@@ -167,6 +169,23 @@ class JniVotingModelsTest {
             constructor.jniDescriptor()
         )
     }
+
+    private fun sampleCommitmentResult() =
+        JniVoteCommitmentResult(
+            vanNullifier = byteArrayOf(1),
+            voteAuthorityNoteNew = byteArrayOf(2),
+            voteCommitment = byteArrayOf(3),
+            proposalId = 4,
+            proof = byteArrayOf(5),
+            encShares = listOf(JniWireEncryptedShare(byteArrayOf(6), byteArrayOf(7), 0)),
+            anchorHeight = 8,
+            voteRoundId = "round",
+            sharesHash = byteArrayOf(9),
+            shareBlinds = listOf(byteArrayOf(101)),
+            shareComms = listOf(byteArrayOf(10)),
+            rVpk = byteArrayOf(102),
+            alphaV = byteArrayOf(103)
+        )
 
     private fun java.lang.reflect.Constructor<*>.jniDescriptor() =
         parameterTypes.joinToString(prefix = "(", postfix = ")V", separator = "") { parameter ->

@@ -141,6 +141,13 @@ struct StoredWireEncryptedShare {
     share_index: u32,
 }
 
+// Stored commitment records are recovery-secret state, not a public or remote
+// API serialization format. Android recovery flows read this record after a
+// restart to rebuild share payloads for an already-submitted vote. The current
+// zcash_voting implementation still needs share_blinds, r_vpk_bytes, and
+// alpha_v for those follow-up operations, and alpha_v is not re-derived by the
+// protocol implementation. Keeping these fields here is an intentional
+// recovery tradeoff until the SDK has a rehydration or protected-storage design.
 #[derive(Deserialize, Serialize)]
 pub(super) struct StoredVoteCommitmentBundle {
     van_nullifier: String,
@@ -647,7 +654,7 @@ pub(super) fn java_vote_commitment_bundle(
                 "proposalId",
             )?,
             proof: java_byte_array_field(env, commitment, "proof")?,
-            // Java carries WireEncryptedShare values plus transient reveal and
+            // Java carries WireEncryptedShare values plus recovery reveal and
             // signing inputs. The encrypted-share plaintext/randomness fields
             // intentionally never cross JNI.
             enc_shares: Vec::new(),
