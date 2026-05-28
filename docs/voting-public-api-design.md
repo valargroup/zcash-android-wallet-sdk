@@ -148,7 +148,7 @@ interface Voting {
 
     /**
      * Applies a previously resolved configuration plan and performs SDK-owned
-     * local invalidation before making the configuration current.
+     * local state reconciliation before making the configuration current.
      */
     suspend fun applyConfigurationPlan(
         plan: VotingConfigurationPlan
@@ -617,25 +617,21 @@ data class VotingConfigurationPlan(
     val previousFingerprint: VotingConfigurationFingerprint?,
     val newFingerprint: VotingConfigurationFingerprint,
     val configuration: VotingConfiguration,
-    val invalidations: List<VotingConfigurationInvalidation>
+    val switchDecision: VotingConfigurationSwitchDecision
 )
 
 @ExperimentalVotingApi
-sealed interface VotingConfigurationInvalidation {
-    data class ServerSetChanged(
-        val affectedServerTypes: Set<VotingServerType>
-    ) : VotingConfigurationInvalidation
+data class VotingConfigurationSwitchDecision(
+    val kind: VotingConfigurationSwitchKind
+)
 
-    data class RoundChanged(
-        val roundId: VotingRoundId,
-        val reason: VotingRoundInvalidationReason
-    ) : VotingConfigurationInvalidation
-
-    data class RoundRemoved(
-        val roundId: VotingRoundId
-    ) : VotingConfigurationInvalidation
-
-    data object UnsupportedPreviousConfiguration : VotingConfigurationInvalidation
+@ExperimentalVotingApi
+enum class VotingConfigurationSwitchKind {
+    Unchanged,
+    InitialLoad,
+    SameChainServiceUpdate,
+    NewChainOrRound,
+    ProtocolChanged
 }
 
 @ExperimentalVotingApi
@@ -666,8 +662,8 @@ data class AuthenticatedVotingRound(
 )
 ```
 
-An empty `invalidations` list means the authenticated configuration can become
-current without clearing or rewriting local voting workflow state.
+`VotingConfigurationSwitchKind.Unchanged` means the authenticated configuration
+can become current without clearing or rewriting local voting workflow state.
 
 Apps may choose a config source. They should not reimplement hash pinning,
 signature verification, version checks, round authentication, config-diffing, or
@@ -675,23 +671,33 @@ local invalidation.
 
 `resolveConfiguration` does not make a newly fetched configuration current by
 itself. It authenticates the config, compares it with SDK-managed local config
-state, and returns a plan. `applyConfigurationPlan` persists the new current
-configuration and performs SDK-owned invalidation in one serialized operation.
-The app may render `plan.invalidations` for user context, but it must not delete
-SDK recovery rows, reset private tree clients, clear pending signatures, or
-rewrite server state itself.
+state, and returns a semantic switch plan. `applyConfigurationPlan` persists the
+new current configuration and performs SDK-owned state reconciliation in one
+serialized operation. The app may render `plan.switchDecision.kind` for user
+context, but it must not classify changed config fields, delete SDK recovery
+rows, reset private tree clients, clear pending signatures, or rewrite server
+state itself.
 
-Configuration changes can invalidate local state. Examples include:
+The Android API should mirror the `zcash_voting::config::ConfigSwitchKind`
+model instead of exposing field-by-field invalidation reasons:
 
-- a changed or removed round;
-- changed roots, snapshot height, proposal set, or session metadata for a round;
-- changed vote, PIR, or tree endpoints;
-- unsupported config versions or previously persisted config state that cannot
-  be safely compared.
+- `InitialLoad` applies when no previous authenticated configuration exists.
+- `Unchanged` applies when the authenticated configuration does not require
+  local workflow state changes.
+- `SameChainServiceUpdate` applies when service data changes while the same
+  chain and round context remain usable. The SDK should restart endpoint caches,
+  status polls, share tracking, and PIR/delegation precompute as needed, while
+  preserving round-id-indexed wallet artifacts.
+- `NewChainOrRound` applies when the authenticated round set or chain context
+  changes. The SDK should discard or reselect the active visible round context,
+  while keeping durable state for old round IDs scoped by normal cleanup policy.
+- `ProtocolChanged` applies when cached voting state cannot safely be reused
+  until compatibility is re-established.
 
-The implementation should push config switch planning into `zcash_voting` when
-that API is available. Until then, Kotlin planning must be isolated behind this
-SDK API and covered by tests.
+Static hash pinning, dynamic signature verification, supported-version checks,
+round authentication, and switch classification should be delegated to
+`zcash_voting::config` as FFI coverage becomes available. Any temporary Kotlin
+planning must be isolated behind this SDK API and covered by tests.
 
 Raw config payload rules:
 
@@ -746,21 +752,15 @@ sealed interface VotingEligibilityStatus {
 }
 ```
 
-Configuration planning models:
+Configuration switch models:
 
 ```kotlin
-enum class VotingServerType {
-    Vote,
-    Pir,
-    VoteTree
-}
-
-sealed interface VotingRoundInvalidationReason {
-    data object RootsChanged : VotingRoundInvalidationReason
-    data object SnapshotChanged : VotingRoundInvalidationReason
-    data object ProposalsChanged : VotingRoundInvalidationReason
-    data object SessionMetadataChanged : VotingRoundInvalidationReason
-    data object StatusRegressed : VotingRoundInvalidationReason
+enum class VotingConfigurationSwitchKind {
+    Unchanged,
+    InitialLoad,
+    SameChainServiceUpdate,
+    NewChainOrRound,
+    ProtocolChanged
 }
 ```
 
@@ -992,13 +992,17 @@ failures, not as caller instructions to repair internal tables.
 
 ### Layer 3: Internal SDK workflow implementation
 
-- Implement config resolution/authentication in SDK.
-- Implement configuration switch planning and SDK-owned invalidation.
+- Implement config resolution/authentication through `zcash_voting::config`
+  where available, with any temporary Kotlin adapter hidden behind the SDK API.
+- Implement configuration switch planning as SDK-owned reconciliation driven by
+  the Rust semantic switch kind.
 - Move prepare workflow below the SDK boundary.
 - Move submit/resume workflow below the SDK boundary.
 - Move share tracking below the SDK boundary.
-- Delegate cryptographic and persistence steps to existing
-  `TypesafeVotingBackendImpl` and Rust.
+- Delegate cryptographic, witness, PIR precompute, phase recovery, and
+  delegation steps to stable `zcash_voting` modules such as `round`,
+  `precompute`, `delegate`, `phases`, `witness`, and `config`, using
+  `TypesafeVotingBackendImpl` only as a transitional adapter where needed.
 - Keep JNI models internal.
 - Wrap backend failures in `VotingException`.
 - Add JNI descriptor, callback, native-link smoke, storage atomicity, and
